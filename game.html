@@ -338,6 +338,16 @@ document.addEventListener('DOMContentLoaded', function () {
 .pdot{width:15px;height:15px;border-radius:50%;flex:0 0 auto}
 .pname{font-weight:600;font-size:15px}
 .psq{margin-left:auto;font-family:var(--mono);font-size:13px;color:var(--muted)}
+.jbtn{margin-left:8px;font-size:12px;font-weight:700;font-family:var(--body);
+  padding:4px 9px;border-radius:99px;border:1px solid var(--line);background:var(--bg-2);
+  color:var(--text);cursor:pointer;transition:all .15s;flex:0 0 auto}
+.jbtn:hover:not(:disabled){border-color:var(--iris);transform:translateY(-1px)}
+.jbtn:disabled{opacity:.4;cursor:not-allowed}
+.jbtn.airborne-btn{border-color:gold;background:color-mix(in srgb,gold 20%,transparent)}
+.tok.airborne{transform:translate(-50%,-50%) scale(1.5) translateY(-14%);
+  box-shadow:0 16px 22px -6px rgba(0,0,0,.4),0 0 0 3px gold;z-index:25;
+  animation:airGlow .5s ease-in-out infinite}
+@keyframes airGlow{0%,100%{filter:drop-shadow(0 0 3px gold)}50%{filter:drop-shadow(0 0 10px gold)}}
 .dicebox{display:flex;flex-direction:column;align-items:center;gap:16px;margin-bottom:18px}
 .die{width:76px;height:76px;border-radius:16px;background:var(--bg-2);
   border:1px solid var(--line-2);display:grid;grid-template-columns:repeat(3,1fr);
@@ -538,9 +548,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
           <div class="who">
             <div class="prow turn" id="p0"><span class="pdot" style="background:#5B4FE9"></span>
-              <span class="pname" id="n0">You</span><span class="psq" id="s0">0</span></div>
+              <span class="pname" id="n0">You</span><span class="psq" id="s0">0</span>
+              <button class="jbtn" id="jumpBtn0" onclick="jump(0)" title="Jump: dodge any snake for 1 second">🦘 3</button></div>
             <div class="prow" id="p1"><span class="pdot" style="background:#E8558F"></span>
-              <span class="pname" id="n1">Computer</span><span class="psq" id="s1">0</span></div>
+              <span class="pname" id="n1">Computer</span><span class="psq" id="s1">0</span>
+              <button class="jbtn" id="jumpBtn1" onclick="jump(1)" title="Jump: dodge any snake for 1 second">🦘 3</button></div>
           </div>
 
           <div class="dicebox">
@@ -550,7 +562,6 @@ document.addEventListener('DOMContentLoaded', function () {
               <div class="pip" id="d6"></div><div class="pip" id="d7"></div><div class="pip" id="d8"></div>
             </div>
             <button class="btn pri" id="roll" onclick="roll()" style="width:100%;justify-content:center">Roll the die</button>
-            <button class="btn" id="jumpBtn" onclick="jump()" style="width:100%;justify-content:center">🦘 Jump (3 left)</button>
           </div>
 
           <p class="msg" id="msg">Your turn. Roll to start.</p>
@@ -564,10 +575,11 @@ document.addEventListener('DOMContentLoaded', function () {
             <li>Land on a ladder foot, climb it.</li>
             <li>Land on a snake head, slide down.</li>
             <li>You need an exact roll to land on 100. Overshoot and you stay put.</li>
-            <li>🐍 <b>Moving snakes</b> mode: snakes crawl back and forth along the whole board in real time, each at its own random speed. If one's body is currently over your square, it bites you — even between turns. Ladders stay put.</li>
-            <li>Rare green snakes are friendly — they'll boost you forward instead of biting.</li>
-            <li>🦘 Each player gets 3 jumps per game: hop 3 squares ahead instantly, no dice needed — handy for dodging an incoming snake.</li>
-            <li>Past 16 snakes, panic mode kicks in: the board glows red and everything speeds up.</li>
+            <li>🐍 <b>Moving snakes</b> mode: snakes roam the whole grid freely in real time — up, down, left, right — completely ignoring the board's numbering. Each has a random size and its own random speed.</li>
+            <li>Only a snake's <b>head</b> is dangerous. If it's currently on your square — even between turns — you get bitten and dropped back by the snake's size. The trailing body is just for show.</li>
+            <li>Rare green snakes are friendly — their head boosts you forward instead of biting.</li>
+            <li>🦘 Each player gets 3 jumps per game (button next to their name): instantly leave the board surface for 1 second, immune to every snake, then land back in the same square.</li>
+            <li>Past 16 snakes, panic mode kicks in: the board glows red and every snake speeds up.</li>
           </ul>
         </div>
       </aside>
@@ -680,7 +692,7 @@ var dynamicBoard = false, snakeAnimId = null, snakeCount = 10, snakesState = [];
 
 var PIPS = {1:[4],2:[0,8],3:[0,4,8],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
 
-var pos = [0, 0], turn = 0, mode = 1, busy = false, over = false, jumpsLeft = [3, 3];
+var pos = [0, 0], turn = 0, mode = 1, busy = false, over = false, jumpsLeft = [3, 3], airborne = [false, false];
 
 /* ============ sound effects (Web Audio, synthesized — no asset files) ============ */
 var audioCtx = null;
@@ -856,41 +868,50 @@ function renderLadders(){
     '<g id="laddersLayer">' + laddersSVG() + '</g><g id="snakesLayer">' + snakesSVG() + '</g>';
 }
 
-/* ---- dynamic board: snakes are live creatures that continuously crawl back and
-   forth along the board path (through every cell in between, never teleporting),
-   each with its own random speed, length, and personality. If a snake's body
-   currently covers a cell a player is resting on, it bites them in real time. ---- */
+/* ---- dynamic board: snakes are free-roaming creatures that crawl across the
+   whole grid in straight orthogonal runs (up/down/left/right), turning at
+   random or when they hit an edge — completely ignorant of the board's 1-100
+   cell numbering. Only the exact cell under a snake's HEAD is dangerous; the
+   trailing body is cosmetic. Each snake has a random size (trail length) and
+   a random speed. ---- */
 var SNAKE_NAMES = ['Steve','Kaa','Slinky','Nagini','Boa','Viper','Sly','Wiggles','Hiss','Monty','Sassy','Fang','Noodle','Ziggy','Coily','Slither','Rex','Miso','Dash','Pixel'];
 var SNAKE_TAUNTS = ['Ssss... unlucky!', 'Gotcha!', 'Slithered right into you.', 'Down you go!', 'Hiss hiss!', 'Should’ve watched your step.', 'Bit ya!', 'Oops, snake!'];
 var biteCounts = [0, 0], boostCounts = [0, 0], biteCooldownUntil = [0, 0];
 var lastFrameTime = null;
+var ORTHO_DIRS = [{ dx: 1, dy: 0 }, { dx: -1, dy: 0 }, { dx: 0, dy: 1 }, { dx: 0, dy: -1 }];
 
-function pathXY(p){
-  p = Math.max(1, Math.min(100, p));
-  var n0 = Math.max(1, Math.floor(p)), n1 = Math.min(100, n0 + 1), frac = p - n0;
-  var a = cellXY(n0), b = cellXY(n1);
-  return { x: a.x + (b.x - a.x) * frac, y: a.y + (b.y - a.y) * frac };
+function randomOrthoDir(excl){
+  var opts = ORTHO_DIRS.filter(function(d){ return !(excl && d.dx === excl.dx && d.dy === excl.dy); });
+  return opts[Math.floor(Math.random() * opts.length)];
+}
+
+/* inverse of cellXY: which numbered board cell is (x,y) currently over,
+   regardless of the direction the snake is actually travelling */
+function xyToCell(x, y){
+  var col = Math.max(0, Math.min(9, Math.round((x - 5) / 10)));
+  var rowFromTop = Math.max(0, Math.min(9, Math.round((y - 5) / 10)));
+  var r = 9 - rowFromTop;
+  var c = (r % 2 === 1) ? (9 - col) : col;
+  return r * 10 + c + 1;
 }
 
 function makeSnakeState(index){
-  var length = 5 + Math.floor(Math.random() * 8);   // 5-12 cells long
-  var minPos = length + 2, maxPos = 98;
-  var friendly = Math.random() < 0.08;               // rare friendly snake — boosts instead of bites
+  var trailLen = 2 + Math.floor(Math.random() * 11);  // random size: 2-12 cells of visual trail (and bite drop distance)
+  var friendly = Math.random() < 0.08;                // rare friendly snake — boosts instead of bites
   var hue = friendly ? 100 + Math.random() * 30 : Math.floor(Math.random() * 360);
   return {
     id: index,
     name: SNAKE_NAMES[Math.floor(Math.random() * SNAKE_NAMES.length)],
     friendly: friendly,
     color: 'hsl(' + hue.toFixed(0) + ', 72%, 52%)',
-    length: length, minPos: minPos, maxPos: maxPos,
-    pos: minPos + Math.random() * (maxPos - minPos),
-    dir: Math.random() < 0.5 ? 1 : -1,
-    speed: 3 + Math.random() * 9,                    // cells/sec — random speed per snake
+    trailLen: trailLen,
+    x: 5 + Math.random() * 90, y: 5 + Math.random() * 90,
+    dir: randomOrthoDir(),
+    speed: 6 + Math.random() * 24,                    // grid-units/sec — random speed per snake
     waveAmp: 1.6 + Math.random() * 2.2,
     waveSpeed: 0.8 + Math.random() * 2.4,
     wavePhase: Math.random() * Math.PI * 2,
-    nextTurn: performance.now() + 2000 + Math.random() * 5000,
-    headXY: null
+    nextTurn: performance.now() + 1500 + Math.random() * 3500
   };
 }
 
@@ -900,10 +921,9 @@ function generateSnakeStates(count){
   return states;
 }
 
-function findSnakeBodyHit(cell){
+function findSnakeHeadHit(cell){
   for(var i = 0; i < snakesState.length; i++){
-    var s = snakesState[i], lo = s.pos - s.length, hi = s.pos;
-    if(cell >= lo && cell <= hi) return s;
+    if(xyToCell(snakesState[i].x, snakesState[i].y) === cell) return snakesState[i];
   }
   return null;
 }
@@ -929,46 +949,41 @@ function showTaunt(text, xy, color){
 
 function applyBite(playerIndex, snake, now){
   var nm = names()[playerIndex];
-  var headXY = snake.headXY || cellXY(Math.round(snake.pos));
+  var headXY = { x: snake.x, y: snake.y };
+  var at = pos[playerIndex];
   if(snake.friendly){
-    pos[playerIndex] = Math.min(99, Math.round(snake.pos + snake.length));
+    pos[playerIndex] = Math.min(99, at + snake.trailLen);
     place(playerIndex, true);
     boostCounts[playerIndex]++;
     sfxBoost();
     say('<b>' + nm + '</b> got a lucky lift from <b>' + snake.name + '</b>! 🍀');
     showTaunt(snake.name + ': +lift! 💚', headXY, '#16A34A');
   } else {
-    pos[playerIndex] = Math.max(1, Math.round(snake.pos - snake.length));
+    pos[playerIndex] = Math.max(1, at - snake.trailLen);
     place(playerIndex, true);
     biteCounts[playerIndex]++;
     sfxSnake();
     shakeBoard();
     var taunt = SNAKE_TAUNTS[Math.floor(Math.random() * SNAKE_TAUNTS.length)];
-    say('<b>' + nm + '</b> got bitten by <b>' + snake.name + '</b>! 🐍 ' + taunt);
+    say('<b>' + nm + '</b> got bitten by <b>' + snake.name + '</b> — only its head bites! 🐍 ' + taunt);
     showTaunt(snake.name + ': ' + taunt, headXY, snake.color);
   }
   biteCooldownUntil[playerIndex] = (now || performance.now()) + 1200;
 }
 
 function snakeBodyPath(s, t){
-  var segs = 12, raw = [];
+  var segs = 12, nx = -s.dir.dy, ny = s.dir.dx;
+  var trailPx = s.trailLen * 10;
+  var d = '';
   for(var i = 0; i <= segs; i++){
     var f = i / segs;
-    raw.push(pathXY(s.pos - s.length + s.length * f));
-  }
-  var d = '', head = raw[segs];
-  for(var i = 0; i <= segs; i++){
-    var f = i / segs;
-    var prev = raw[Math.max(0, i - 1)], next = raw[Math.min(segs, i + 1)];
-    var dx = next.x - prev.x, dy = next.y - prev.y, len = Math.hypot(dx, dy) || 1;
-    var nx = -dy / len, ny = dx / len;
+    var bx = s.x - s.dir.dx * trailPx * (1 - f), by = s.y - s.dir.dy * trailPx * (1 - f);
     var taper = Math.sin(Math.PI * f);
     var wob = s.waveAmp * Math.sin(t * s.waveSpeed + s.wavePhase + f * Math.PI * 2.4) * taper;
-    var px = raw[i].x + nx * wob, py = raw[i].y + ny * wob;
-    if(i === segs) head = { x: px, y: py };
+    var px = bx + nx * wob, py = by + ny * wob;
     d += (i === 0 ? 'M' : ' L') + px + ' ' + py;
   }
-  return { d: d, head: head };
+  return d;
 }
 
 function snakeAnimFrame(now){
@@ -984,32 +999,36 @@ function snakeAnimFrame(now){
   if(!busy && !over){
     for(var pi = 0; pi < 2; pi++){
       if(pos[pi] <= 0 || pos[pi] >= 100) continue;
+      if(airborne[pi]) continue;
       if(now < biteCooldownUntil[pi]) continue;
-      var hit = findSnakeBodyHit(pos[pi]);
+      var hit = findSnakeHeadHit(pos[pi]);
       if(hit) applyBite(pi, hit, now);
     }
   }
 
   snakesState.forEach(function(s){
-    s.pos += s.dir * s.speed * dt * (panic ? 1.3 : 1);
-    if(s.pos >= s.maxPos){ s.pos = s.maxPos; s.dir = -1; }
-    if(s.pos <= s.minPos){ s.pos = s.minPos; s.dir = 1; }
+    var mul = panic ? 1.4 : 1;
+    s.x += s.dir.dx * s.speed * dt * mul;
+    s.y += s.dir.dy * s.speed * dt * mul;
+    if(s.x < 5){ s.x = 5; s.dir = randomOrthoDir({ dx: -1, dy: 0 }); }
+    if(s.x > 95){ s.x = 95; s.dir = randomOrthoDir({ dx: 1, dy: 0 }); }
+    if(s.y < 5){ s.y = 5; s.dir = randomOrthoDir({ dx: 0, dy: -1 }); }
+    if(s.y > 95){ s.y = 95; s.dir = randomOrthoDir({ dx: 0, dy: 1 }); }
     if(now >= s.nextTurn){
-      if(Math.random() < 0.5) s.dir *= -1;
-      s.speed = 3 + Math.random() * 9;
-      s.nextTurn = now + 2000 + Math.random() * 5000;
+      s.dir = randomOrthoDir();
+      s.speed = 6 + Math.random() * 24;
+      s.nextTurn = now + 1500 + Math.random() * 3500;
     }
   });
 
   var svg = '', tt = panic ? t * 1.8 : t;
   snakesState.forEach(function(s){
-    var built = snakeBodyPath(s, tt);
-    s.headXY = built.head;
+    var d = snakeBodyPath(s, tt);
     var col = s.color;
-    svg += '<path d="' + built.d + '" fill="none" stroke="' + col + '" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.85"/>';
-    svg += '<circle cx="' + built.head.x + '" cy="' + built.head.y + '" r="2.1" fill="' + col + '"/>';
-    svg += '<circle cx="' + (built.head.x - 0.8) + '" cy="' + (built.head.y - 0.5) + '" r="0.42" fill="' + (s.friendly ? '#08320f' : '#fff') + '"/>';
-    svg += '<circle cx="' + (built.head.x + 0.8) + '" cy="' + (built.head.y - 0.5) + '" r="0.42" fill="' + (s.friendly ? '#08320f' : '#fff') + '"/>';
+    svg += '<path d="' + d + '" fill="none" stroke="' + col + '" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.85"/>';
+    svg += '<circle cx="' + s.x + '" cy="' + s.y + '" r="2.1" fill="' + col + '"/>';
+    svg += '<circle cx="' + (s.x - 0.8) + '" cy="' + (s.y - 0.5) + '" r="0.42" fill="' + (s.friendly ? '#08320f' : '#fff') + '"/>';
+    svg += '<circle cx="' + (s.x + 0.8) + '" cy="' + (s.y - 0.5) + '" r="0.42" fill="' + (s.friendly ? '#08320f' : '#fff') + '"/>';
   });
   var layer = document.getElementById('snakesLayer');
   if(layer) layer.innerHTML = svg;
@@ -1103,7 +1122,9 @@ function setMode(m){
 function newGame(){
   pos = [0, 0]; turn = 0; busy = false; over = false;
   biteCounts = [0, 0]; boostCounts = [0, 0]; biteCooldownUntil = [0, 0];
-  jumpsLeft = [3, 3];
+  jumpsLeft = [3, 3]; airborne = [false, false];
+  document.getElementById('t0').classList.remove('airborne');
+  document.getElementById('t1').classList.remove('airborne');
   document.getElementById('win').classList.remove('show');
   showDie(1);
   place(0); place(1);
@@ -1111,35 +1132,35 @@ function newGame(){
   setTurnUI();
 }
 
-function jump(){
-  var human = (mode === 2) || turn === 0;
-  if(busy || over || !human || jumpsLeft[turn] <= 0) return;
-  jumpsLeft[turn]--;
+/* Jump: an instant, turn-independent dodge. The player briefly leaves the
+   board surface for 1 second — untouchable by any snake head — then lands
+   back in the exact same square. Costs one of 3 charges per game. */
+function jump(i){
+  if(over || jumpsLeft[i] <= 0 || airborne[i]) return;
+  jumpsLeft[i]--;
+  airborne[i] = true;
   updateJumpUI();
-  busy = true; setTurnUI();
   sfxJump();
-  var me = turn, nm = names()[me];
-  var target = Math.min(99, pos[me] + 3);
-  say('<b>' + nm + '</b> jumps ahead! 🦘');
-  var step = pos[me];
-  var walk = setInterval(function(){
-    step++;
-    pos[me] = step;
-    place(me);
-    sfxStep();
-    if(step >= target){
-      clearInterval(walk);
-      setTimeout(function(){ afterMove(me, 0, nm); }, 200);
-    }
-  }, 110);
+  var el = document.getElementById('t' + i);
+  el.classList.add('airborne');
+  say('<b>' + names()[i] + '</b> hops off the board for a second! 🦘');
+  setTimeout(function(){
+    airborne[i] = false;
+    el.classList.remove('airborne');
+    updateJumpUI();
+  }, 1000);
 }
 
 function updateJumpUI(){
-  var btn = document.getElementById('jumpBtn');
-  if(!btn) return;
-  btn.textContent = '🦘 Jump (' + jumpsLeft[turn] + ' left)';
-  var human = (mode === 2) || turn === 0;
-  btn.disabled = busy || over || !human || jumpsLeft[turn] <= 0;
+  for(var i = 0; i < 2; i++){
+    var btn = document.getElementById('jumpBtn' + i);
+    if(!btn) continue;
+    btn.textContent = '🦘 ' + jumpsLeft[i];
+    btn.disabled = over || jumpsLeft[i] <= 0 || airborne[i];
+    btn.classList.toggle('airborne-btn', airborne[i]);
+  }
+  var p1jump = document.getElementById('jumpBtn1');
+  if(p1jump) p1jump.hidden = mode === 1;
 }
 
 function roll(){
@@ -1210,7 +1231,7 @@ function afterMove(me, v, nm){
     return setTimeout(function(){ afterMove(me, v, nm); }, 900);
   }
 
-  var dynHit = dynamicBoard ? findSnakeBodyHit(at) : null;
+  var dynHit = (dynamicBoard && !airborne[me]) ? findSnakeHeadHit(at) : null;
   if(dynHit){
     applyBite(me, dynHit, performance.now());
     return setTimeout(function(){ afterMove(me, v, nm); }, 900);
