@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Amin Abbasishahkoo — Machine learning engineer &amp; AI researcher</title>
+<meta name="description" content="Amin Abbasishahkoo — machine learning engineer and AI researcher in Ottawa. PhD candidate at the University of Ottawa, currently at Ericsson.">
+<link rel="canonical" href="https://aminabbasi.ca/">
+<meta property="og:title" content="Amin Abbasishahkoo">
+<meta property="og:description" content="Machine learning engineer and AI researcher. Ottawa, Canada.">
+<meta property="og:type" content="website">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Vazirmatn:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+/* ============ tokens ============ */
+:root{
+  --bg:#F6F6FB;
+  --bg-2:#EDEDF6;
+  --surface:#FFFFFF;
+  --text:#12121C;
+  --muted:#61617A;
+  --faint:#8E8EA6;
+  --line:#E3E3F0;
+  --line-2:#CFCFE4;
+  --iris:#5B4FE9;
+  --iris-soft:#EEECFE;
+  --mint:#0FA98E;
+  --rose:#E8558F;
+  --amber:#D98418;
+  --shadow:0 24px 50px -34px rgba(20,20,50,.45);
+  --shadow-sm:0 8px 24px -18px rgba(20,20,50,.5);
+  --r:14px;
+  --display:'Sora',system-ui,sans-serif;
+  --body:'Plus Jakarta Sans',system-ui,sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,monospace;
+  --fa:'Vazirmatn',var(--body);
+  --maxw:1080px;
+}
+[data-theme="dark"]{
+  --bg:#0A0A11;
+  --bg-2:#101019;
+  --surface:#14141F;
+  --text:#F1F1F7;
+  --muted:#9C9CB6;
+  --faint:#71718C;
+  --line:#22222F;
+  --line-2:#2E2E40;
+  --iris:#8B7FFF;
+  --iris-soft:#1B1830;
+  --mint:#2FD4B4;
+  --rose:#FF7DAD;
+  --amber:#F0A93C;
+  --shadow:0 24px 50px -34px rgba(0,0,0,.9);
+  --shadow-sm:0 8px 24px -18px rgba(0,0,0,.8);
+}
+
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+body{
+  background:var(--bg);color:var(--text);
+  font-family:var(--body);font-size:16.5px;line-height:1.7;font-weight:400;
+  -webkit-font-smoothing:antialiased;overflow-x:hidden;
+  transition:background .4s ease,color .4s ease;
+}
+a{color:inherit}
+img{max-width:100%}
+:focus-visible{outline:2px solid var(--iris);outline-offset:3px;border-radius:4px}
+.wrap{max-width:var(--maxw);margin:0 auto;padding:0 26px}
+.fa{font-family:var(--fa);direction:rtl;unicode-bidi:isolate}
+
+/* ============ nav ============ */
+#bar{position:fixed;top:0;left:0;height:2px;width:0;z-index:80;
+  background:linear-gradient(90deg,var(--iris),var(--rose))}
+.nav{
+  position:sticky;top:0;z-index:70;
+  background:color-mix(in srgb,var(--bg) 80%,transparent);
+  backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+  border-bottom:1px solid transparent;transition:border-color .3s;
+}
+.nav.stuck{border-bottom-color:var(--line)}
+.navin{max-width:var(--maxw);margin:0 auto;padding:13px 26px;display:flex;align-items:center;gap:22px}
+.brand{
+  display:flex;align-items:center;gap:10px;text-decoration:none;
+  font-family:var(--display);font-weight:700;font-size:16px;letter-spacing:-.02em;
+}
+.brand i{
+  width:26px;height:26px;border-radius:8px;display:grid;place-items:center;
+  background:linear-gradient(135deg,var(--iris),var(--rose));
+  color:#fff;font-style:normal;font-size:13px;font-weight:700;font-family:var(--display);
+}
+.navlinks{margin-left:auto;display:flex;align-items:center;gap:6px}
+.navlinks a{
+  text-decoration:none;color:var(--muted);font-size:14.5px;font-weight:500;
+  padding:7px 13px;border-radius:99px;transition:color .2s,background .2s;
+}
+.navlinks a:hover,.navlinks a.on{color:var(--text);background:var(--bg-2)}
+.tt{
+  width:36px;height:36px;border-radius:99px;border:1px solid var(--line);
+  background:var(--surface);color:var(--text);cursor:pointer;display:grid;place-items:center;
+  margin-left:6px;transition:border-color .2s,transform .2s;flex:0 0 auto;
+}
+.tt:hover{border-color:var(--line-2);transform:rotate(-18deg)}
+.tt svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round}
+[data-theme="dark"] .tt .moon{display:none}
+:root:not([data-theme="dark"]) .tt .sun{display:none}
+@media(max-width:700px){.navlinks a{padding:7px 9px;font-size:13.5px}.brand span{display:none}}
+
+/* ============ headings ============ */
+.eyebrow{
+  font-family:var(--mono);font-size:11.5px;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--iris);margin-bottom:16px;display:block;
+}
+h2.sec{font-family:var(--display);font-weight:700;font-size:clamp(27px,4vw,40px);
+  line-height:1.12;letter-spacing:-.03em;margin-bottom:12px}
+.lead{color:var(--muted);max-width:58ch;margin-bottom:44px;font-size:17px}
+section{padding:88px 0;position:relative}
+
+/* ============ hero ============ */
+.hero{position:relative;padding:96px 0 84px;overflow:hidden}
+.aurora{position:absolute;inset:-20% -10% auto;height:620px;z-index:0;pointer-events:none;filter:blur(90px);opacity:.5}
+[data-theme="dark"] .aurora{opacity:.42}
+.blob{position:absolute;border-radius:50%}
+.b1{width:460px;height:460px;background:var(--iris);left:2%;top:4%;animation:float1 22s ease-in-out infinite}
+.b2{width:380px;height:380px;background:var(--rose);left:44%;top:22%;animation:float2 19s ease-in-out infinite}
+.b3{width:340px;height:340px;background:var(--mint);left:72%;top:0%;animation:float3 26s ease-in-out infinite}
+@keyframes float1{0%,100%{transform:translate(0,0)}50%{transform:translate(70px,50px)}}
+@keyframes float2{0%,100%{transform:translate(0,0)}50%{transform:translate(-60px,40px)}}
+@keyframes float3{0%,100%{transform:translate(0,0)}50%{transform:translate(-50px,60px)}}
+.hero .wrap{position:relative;z-index:1}
+.tagpill{
+  display:inline-flex;align-items:center;gap:9px;font-size:13px;font-weight:500;
+  border:1px solid var(--line);background:var(--surface);color:var(--muted);
+  padding:7px 15px;border-radius:99px;margin-bottom:26px;box-shadow:var(--shadow-sm);
+}
+.ping{width:7px;height:7px;border-radius:50%;background:var(--mint);position:relative}
+.ping::after{content:"";position:absolute;inset:-4px;border-radius:50%;background:var(--mint);opacity:.35;animation:ping 2s ease-out infinite}
+@keyframes ping{0%{transform:scale(.4);opacity:.5}100%{transform:scale(1.6);opacity:0}}
+h1{font-family:var(--display);font-weight:800;font-size:clamp(38px,7vw,68px);
+  line-height:1.02;letter-spacing:-.045em;margin-bottom:22px;max-width:16ch}
+.grad{background:linear-gradient(110deg,var(--iris),var(--rose) 55%,var(--amber));
+  -webkit-background-clip:text;background-clip:text;color:transparent}
+.hero p.intro{font-size:18.5px;color:var(--muted);max-width:56ch;margin-bottom:32px}
+.hero p.intro b{color:var(--text);font-weight:600}
+.cta{display:flex;flex-wrap:wrap;gap:11px}
+.btn{
+  display:inline-flex;align-items:center;gap:8px;text-decoration:none;cursor:pointer;
+  font-family:var(--body);font-size:15px;font-weight:600;padding:11px 21px;border-radius:99px;
+  border:1px solid var(--line);background:var(--surface);color:var(--text);
+  transition:transform .2s,box-shadow .2s,border-color .2s,background .2s,opacity .2s;
+}
+.btn:hover{transform:translateY(-2px);border-color:var(--line-2);box-shadow:var(--shadow-sm)}
+.btn.pri{background:var(--iris);border-color:var(--iris);color:#fff}
+.btn.pri:hover{opacity:.92}
+.btn:disabled{opacity:.45;cursor:not-allowed;transform:none}
+
+/* ============ generic cards ============ */
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.grid2{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
+@media(max-width:860px){.grid3,.grid2{grid-template-columns:1fr}}
+.card{
+  background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:24px;
+  transition:transform .28s cubic-bezier(.2,.7,.3,1),box-shadow .28s,border-color .28s;
+}
+.card:hover{transform:translateY(-4px);border-color:var(--line-2);box-shadow:var(--shadow)}
+.ctag{font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--iris);margin-bottom:12px;display:block}
+.ctitle{font-family:var(--display);font-weight:700;font-size:18px;letter-spacing:-.02em;
+  line-height:1.3;margin-bottom:8px}
+.card p{font-size:15px;color:var(--muted);line-height:1.65}
+
+/* ============ work timeline ============ */
+.tl{position:relative;padding-left:26px}
+.tl::before{content:"";position:absolute;left:4px;top:8px;bottom:8px;width:2px;
+  background:linear-gradient(var(--iris),var(--rose),transparent)}
+.job{position:relative;padding-bottom:34px}
+.job::before{content:"";position:absolute;left:-26px;top:9px;width:10px;height:10px;border-radius:50%;
+  background:var(--bg);border:2px solid var(--line-2);transition:all .45s}
+.job.in::before{background:var(--iris);border-color:var(--iris);box-shadow:0 0 0 5px var(--iris-soft)}
+.jhead{display:flex;flex-wrap:wrap;align-items:baseline;gap:10px;margin-bottom:4px}
+.jrole{font-family:var(--display);font-weight:700;font-size:18.5px;letter-spacing:-.02em}
+.jwhen{font-family:var(--mono);font-size:12px;color:var(--faint);margin-left:auto;white-space:nowrap}
+.jorg{font-size:14.5px;color:var(--iris);font-weight:600;margin-bottom:8px}
+.jorg span{color:var(--faint);font-weight:400}
+.job p{font-size:15.5px;color:var(--muted)}
+
+/* ============ publications ============ */
+.pub{
+  display:flex;gap:18px;align-items:flex-start;text-decoration:none;
+  padding:17px 6px;border-bottom:1px solid var(--line);
+  transition:padding-left .28s,background .28s;
+}
+.pub:first-of-type{border-top:1px solid var(--line)}
+.pub:hover{padding-left:14px;background:var(--bg-2)}
+.pyr{font-family:var(--mono);font-size:12px;color:var(--faint);flex:0 0 42px;padding-top:5px}
+.ptitle{font-family:var(--display);font-weight:600;font-size:16.5px;line-height:1.4;letter-spacing:-.015em}
+.pven{font-family:var(--mono);font-size:11px;color:var(--iris);margin-top:5px;letter-spacing:.06em;text-transform:uppercase}
+.parrow{margin-left:auto;color:var(--faint);opacity:0;transform:translateX(-6px);transition:all .25s;padding-top:4px}
+.pub:hover .parrow{opacity:1;transform:none}
+
+/* ============ skills ============ */
+.sgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:28px 42px}
+@media(max-width:760px){.sgrid{grid-template-columns:1fr}}
+.sgroup h3{font-family:var(--mono);font-size:11.5px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--faint);font-weight:400;margin-bottom:13px;padding-bottom:9px;border-bottom:1px solid var(--line)}
+.chips{display:flex;flex-wrap:wrap;gap:7px}
+.chip{font-size:13.5px;font-weight:500;background:var(--surface);border:1px solid var(--line);
+  padding:5px 12px;border-radius:99px;transition:all .2s;cursor:default}
+.chip:hover{border-color:var(--iris);color:var(--iris);transform:translateY(-2px)}
+
+/* ============ education ============ */
+.deg{border-left:2px solid var(--iris);padding:2px 0 2px 18px}
+.deg h3{font-family:var(--display);font-weight:700;font-size:17px;letter-spacing:-.02em}
+.deg p{font-size:14.5px;color:var(--muted);margin-top:2px}
+.deg .gpa{font-family:var(--mono);font-size:12px;color:var(--mint);margin-top:4px}
+
+/* ============ contact ============ */
+.mail{
+  font-family:var(--display);font-weight:800;letter-spacing:-.04em;line-height:1.05;
+  font-size:clamp(26px,5.4vw,58px);text-decoration:none;display:inline-block;word-break:break-word;
+  background-image:linear-gradient(90deg,var(--iris),var(--rose));
+  background-size:0% 3px;background-position:0 100%;background-repeat:no-repeat;
+  transition:background-size .5s cubic-bezier(.2,.7,.3,1);
+}
+.mail:hover{background-size:100% 3px}
+footer{border-top:1px solid var(--line);margin-top:80px;padding:24px 0 34px}
+.fin{display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;
+  font-family:var(--mono);font-size:12px;color:var(--faint)}
+
+/* ============ page header (sub-pages) ============ */
+.phead{padding:64px 0 32px;position:relative;overflow:hidden}
+.phead h1{font-size:clamp(32px,5.4vw,52px);margin-bottom:14px}
+.phead p{color:var(--muted);max-width:56ch;font-size:17px}
+
+/* ============ reveal ============ */
+.rv{opacity:0;transform:translateY(26px);
+  transition:opacity .75s cubic-bezier(.2,.7,.3,1),transform .75s cubic-bezier(.2,.7,.3,1)}
+.rv.in{opacity:1;transform:none}
+@media(prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  .rv{opacity:1;transform:none;transition:none}
+  .blob,.ping::after{animation:none}
+  *{transition-duration:.01ms!important}
+}
+
+</style>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='16' fill='%235B4FE9'/><text x='32' y='45' text-anchor='middle' font-size='36' font-family='sans-serif' font-weight='700' fill='white'>A</text></svg>">
+<script>
+/* theme — set as early as possible to avoid a flash */
+(function () {
+  var saved = null;
+  try { saved = localStorage.getItem('theme'); } catch (e) {}
+  var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  var theme = saved || (prefersDark ? 'dark' : 'light');
+  document.documentElement.setAttribute('data-theme', theme);
+
+  window.toggleTheme = function () {
+    var next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    try { localStorage.setItem('theme', next); } catch (e) {}
+    window.dispatchEvent(new CustomEvent('themechange', { detail: next }));
+  };
+})();
+
+document.addEventListener('DOMContentLoaded', function () {
+  /* scroll progress + sticky nav border */
+  var bar = document.getElementById('bar');
+  var nav = document.querySelector('.nav');
+  function onScroll() {
+    if (bar) {
+      var h = document.documentElement.scrollHeight - window.innerHeight;
+      bar.style.width = (h > 0 ? (window.scrollY / h) * 100 : 0) + '%';
+    }
+    if (nav) nav.classList.toggle('stuck', window.scrollY > 6);
+  }
+  window.addEventListener('scroll', onScroll, { passive: true });
+  onScroll();
+
+  /* reveal on scroll */
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) {
+      if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
+    });
+  }, { threshold: 0.12, rootMargin: '0px 0px -6% 0px' });
+
+  document.querySelectorAll('.rv').forEach(function (el, i) {
+    el.style.transitionDelay = (Math.min(i % 5, 4) * 70) + 'ms';
+    io.observe(el);
+  });
+
+  /* footer year */
+  document.querySelectorAll('.yr').forEach(function (el) {
+    el.textContent = new Date().getFullYear();
+  });
+});
+
+</script>
+</head>
+<body>
+<div id="bar"></div>
+
+<nav class="nav">
+  <div class="navin">
+    <a class="brand" href="index.html"><i>A</i><span>Amin Abbasishahkoo</span></a>
+    <div class="navlinks">
+      <a href="#work">Work</a>
+      <a href="#papers">Papers</a>
+      <a href="blog.html">Blog</a>
+      <a href="lab.html">Lab</a>
+      <a href="game.html">Game</a>
+      <a href="#contact">Contact</a>
+      <button class="tt" onclick="toggleTheme()" aria-label="Switch between light and dark mode">
+        <svg class="moon" viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z"/></svg>
+        <svg class="sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4"/></svg>
+      </button>
+    </div>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="aurora" aria-hidden="true">
+    <div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div>
+  </div>
+  <div class="wrap">
+    <div class="tagpill rv"><span class="ping" aria-hidden="true"></span> Ottawa, Canada — open to 2026 roles</div>
+    <h1 class="rv">I teach machines to <span class="grad">design hardware</span> and to admit when they're wrong.</h1>
+    <p class="intro rv">I'm a machine learning engineer and PhD candidate working at the seam between <b>models that build things</b> and <b>models you can actually trust</b>. Right now that means graph neural networks that replace hours of physics simulation at Ericsson, and research on how to tell when a deep model is about to fail.</p>
+    <div class="cta rv">
+      <a class="btn pri" href="#work">See my work</a>
+      <a class="btn" href="Amin_Abbasishahkoo_Resume.pdf">Résumé</a>
+      <a class="btn" href="#contact">Get in touch</a>
+    </div>
+  </div>
+</header>
+
+<section id="about" style="padding-top:24px">
+  <div class="wrap">
+    <div class="grid3">
+      <div class="card rv">
+        <span class="ctag">Building</span>
+        <h3 class="ctitle">AI that designs</h3>
+        <p>Surrogate models and reinforcement learning agents that explore engineering design spaces far faster than simulation can — a thousand times faster, in my current work.</p>
+      </div>
+      <div class="card rv">
+        <span class="ctag">Researching</span>
+        <h3 class="ctitle">AI you can trust</h3>
+        <p>My PhD asks how you know a deep model is ready to ship. Test adequacy, input selection, and explaining failures in language a human can act on.</p>
+      </div>
+      <div class="card rv">
+        <span class="ctag">Shipping</span>
+        <h3 class="ctitle">End to end</h3>
+        <p>Six years of taking things from raw data to running service — pipelines, APIs, experiment tracking, containers, CI. Research that stays in a notebook doesn't count.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="work">
+  <div class="wrap">
+    <div class="rv">
+      <span class="eyebrow">Experience</span>
+      <h2 class="sec">Where I've worked</h2>
+      <p class="lead">Research labs, an early-stage startup, and a telecom R&amp;D team. Usually as the person who owns a problem from first principles to production.</p>
+    </div>
+
+    <div class="tl">
+      <article class="job rv">
+        <div class="jhead"><span class="jrole">AI researcher &amp; developer</span><span class="jwhen">2026 — now</span></div>
+        <p class="jorg">Ericsson <span>· Ottawa</span></p>
+        <p>Built a graph neural surrogate that predicts RF cavity filter performance in under a second instead of five minutes of 3D electromagnetic simulation, plus a reinforcement learning agent that tunes filter geometry on its own. Taught myself the underlying physics from scratch to do it, and shipped the whole thing as a tracked, containerised pipeline the design team can run.</p>
+      </article>
+
+      <article class="job rv">
+        <div class="jhead"><span class="jrole">ML engineer &amp; AI researcher</span><span class="jwhen">2023 — now</span></div>
+        <p class="jorg">Nanda Lab, University of Ottawa <span>· Ottawa</span></p>
+        <p>My PhD work. I led TEASMA and MetaSel — two frameworks for deciding whether a deep model's test set is good enough to trust, and for picking which unlabelled inputs are worth labelling. Currently using vision-language models to describe a model's blind spots in human concepts rather than as a number. Consistently beat the strongest published baselines.</p>
+      </article>
+
+      <article class="job rv">
+        <div class="jhead"><span class="jrole">LLM research assistant</span><span class="jwhen">2024</span></div>
+        <p class="jorg">University of Ottawa <span>· Ottawa</span></p>
+        <p>Automated the mapping between software requirements and regulatory clauses. Compared fine-tuned classifiers, semantic similarity, and few-shot prompting — the prompting approach won using a fifth of the training data.</p>
+      </article>
+
+      <article class="job rv">
+        <div class="jhead"><span class="jrole">ML &amp; software engineer</span><span class="jwhen">2021 — 2023</span></div>
+        <p class="jorg">Giftpals <span>· Cupertino, remote</span></p>
+        <p>First engineer on the product. Designed the architecture and database from nothing, then added the parts that made it interesting: a recommendation engine, customer segmentation, demand forecasting, and crawlers that gathered half a million product profiles.</p>
+      </article>
+
+      <article class="job rv">
+        <div class="jhead"><span class="jrole">Machine learning engineer</span><span class="jwhen">2020 — 2021</span></div>
+        <p class="jorg">Arnika <span>· Tehran</span></p>
+        <p>Forecasting models for financial markets, sharpened with sentiment signals, and a reinforcement learning agent that traded on its own. Also built the live dashboards everyone actually looked at.</p>
+      </article>
+
+      <article class="job rv">
+        <div class="jhead"><span class="jrole">Research assistant</span><span class="jwhen">2018 — 2021</span></div>
+        <p class="jorg">Shahid Beheshti University <span>· Tehran</span></p>
+        <p>Where I fell for reinforcement learning: teaching a surgical robot to manipulate soft tissue, and combining evolutionary search with policy optimisation to make it converge. Two journal papers came out of it.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<section id="papers">
+  <div class="wrap">
+    <div class="rv">
+      <span class="eyebrow">Publications</span>
+      <h2 class="sec">Papers</h2>
+      <p class="lead">Six, first author on all of them. Software engineering, trustworthy AI, and medical robotics.</p>
+    </div>
+    <div class="rv">
+      <a class="pub" href="https://arxiv.org/abs/2605.24008">
+        <span class="pyr">2026</span>
+        <span><span class="ptitle">CAFD: Concept-aware DNN fault detection using VLMs</span><span class="pven">arXiv preprint</span></span>
+        <span class="parrow" aria-hidden="true">↗</span>
+      </a>
+      <a class="pub" href="https://arxiv.org/abs/2601.08024">
+        <span class="pyr">2026</span>
+        <span><span class="ptitle">A highly efficient diversity-based input selection for DNN improvement using VLMs</span><span class="pven">arXiv preprint</span></span>
+        <span class="parrow" aria-hidden="true">↗</span>
+      </a>
+      <a class="pub" href="https://doi.org/10.1109/TSE.2025.3612253">
+        <span class="pyr">2025</span>
+        <span><span class="ptitle">MetaSel: A test selection approach for fine-tuned DNN models</span><span class="pven">IEEE Trans. Software Engineering</span></span>
+        <span class="parrow" aria-hidden="true">↗</span>
+      </a>
+      <a class="pub" href="https://doi.org/10.1109/TSE.2024.3482984">
+        <span class="pyr">2024</span>
+        <span><span class="ptitle">TEASMA: A practical methodology for test adequacy assessment of deep neural networks</span><span class="pven">IEEE Trans. Software Engineering</span></span>
+        <span class="parrow" aria-hidden="true">↗</span>
+      </a>
+      <a class="pub" href="https://doi.org/10.1007/s11548-022-02789-8">
+        <span class="pyr">2023</span>
+        <span><span class="ptitle">Deep reinforcement learning in continuous action space for autonomous robotic surgery</span><span class="pven">Int. J. Computer Assisted Radiology &amp; Surgery</span></span>
+        <span class="parrow" aria-hidden="true">↗</span>
+      </a>
+      <a class="pub" href="https://doi.org/10.1109/TMRB.2022.3225671">
+        <span class="pyr">2023</span>
+        <span><span class="ptitle">Autonomous tissue manipulation via surgical robot using deep RL and evolutionary algorithm</span><span class="pven">IEEE Trans. Medical Robotics &amp; Bionics</span></span>
+        <span class="parrow" aria-hidden="true">↗</span>
+      </a>
+    </div>
+  </div>
+</section>
+
+<section id="skills">
+  <div class="wrap">
+    <div class="rv">
+      <span class="eyebrow">Toolkit</span>
+      <h2 class="sec">What I work with</h2>
+    </div>
+    <div class="sgrid">
+      <div class="sgroup rv">
+        <h3>Languages</h3>
+        <div class="chips"><span class="chip">Python</span><span class="chip">Java</span><span class="chip">C / C++</span><span class="chip">JavaScript</span><span class="chip">C#</span><span class="chip">PHP</span><span class="chip">SQL</span><span class="chip">Shell</span></div>
+      </div>
+      <div class="sgroup rv">
+        <h3>Machine learning</h3>
+        <div class="chips"><span class="chip">PyTorch</span><span class="chip">PyTorch Geometric</span><span class="chip">TensorFlow</span><span class="chip">GNNs</span><span class="chip">CNNs</span><span class="chip">Transformers</span><span class="chip">Deep RL</span><span class="chip">OpenCV</span></div>
+      </div>
+      <div class="sgroup rv">
+        <h3>Foundation models &amp; agents</h3>
+        <div class="chips"><span class="chip">LLMs</span><span class="chip">VLMs</span><span class="chip">LangChain</span><span class="chip">LangGraph</span><span class="chip">MCP</span><span class="chip">RAG</span><span class="chip">LoRA</span></div>
+      </div>
+      <div class="sgroup rv">
+        <h3>MLOps &amp; infrastructure</h3>
+        <div class="chips"><span class="chip">MLflow</span><span class="chip">Docker</span><span class="chip">Gradio</span><span class="chip">Git CI/CD</span><span class="chip">AWS</span><span class="chip">SLURM</span><span class="chip">HPC</span></div>
+      </div>
+      <div class="sgroup rv">
+        <h3>Backend &amp; data</h3>
+        <div class="chips"><span class="chip">FastAPI</span><span class="chip">Flask</span><span class="chip">Laravel</span><span class="chip">REST</span><span class="chip">MySQL</span><span class="chip">Redis</span></div>
+      </div>
+      <div class="sgroup rv">
+        <h3>Simulation</h3>
+        <div class="chips"><span class="chip">Ansys HFSS</span><span class="chip">PyAEDT</span><span class="chip">MuJoCo</span><span class="chip">OpenAI Gym</span><span class="chip">Cython</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="education">
+  <div class="wrap">
+    <div class="rv">
+      <span class="eyebrow">Education</span>
+      <h2 class="sec">Studied</h2>
+    </div>
+    <div class="grid3">
+      <div class="deg rv"><h3>PhD, Computer Science</h3><p>University of Ottawa · candidate</p><p class="gpa">GPA 4.0 / 4.0</p></div>
+      <div class="deg rv"><h3>MSc, Artificial Intelligence</h3><p>Shahid Beheshti University</p><p class="gpa">GPA 4.0 / 4.0 · ranked 3rd in cohort</p></div>
+      <div class="deg rv"><h3>BSc, Computer Engineering</h3><p>Shahid Beheshti University</p><p class="gpa">GPA 3.5 / 4.0</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="contact">
+  <div class="wrap">
+    <div class="rv">
+      <span class="eyebrow">Contact</span>
+      <h2 class="sec">Say hello</h2>
+      <p class="lead">I'm best on problems where a model has to survive contact with the real world — hardware, safety, shifting data. Always happy to talk.</p>
+      <a class="mail" href="mailto:ab.amin94@gmail.com">ab.amin94@gmail.com</a>
+      <div class="cta" style="margin-top:34px">
+        <a class="btn" href="https://www.linkedin.com/in/YOUR-LINKEDIN">LinkedIn</a>
+        <a class="btn" href="https://github.com/YOUR-GITHUB">GitHub</a>
+        <a class="btn" href="https://scholar.google.com/citations?user=YOUR-ID">Google Scholar</a>
+        <a class="btn" href="Amin_Abbasishahkoo_Resume.pdf">Résumé (PDF)</a>
+      </div>
+    </div>
+    <footer>
+      <div class="fin">
+        <span>© <span class="yr"></span> Amin Abbasishahkoo</span>
+        <span>Ottawa, Canada · aminabbasi.ca</span>
+      </div>
+    </footer>
+  </div>
+</section>
+</body>
+</html>
