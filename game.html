@@ -297,6 +297,27 @@ document.addEventListener('DOMContentLoaded', function () {
 .boardwrap{position:relative;width:100%;max-width:560px;margin:0 auto;aspect-ratio:1;
   border-radius:var(--r);overflow:hidden;border:1px solid var(--line-2);
   background:var(--surface);box-shadow:var(--shadow)}
+.boardwrap.shake{animation:boardShake .45s}
+@keyframes boardShake{
+  10%,90%{transform:translateX(-1px)}
+  20%,80%{transform:translateX(2px)}
+  30%,50%,70%{transform:translateX(-4px)}
+  40%,60%{transform:translateX(4px)}
+}
+.boardwrap.panic::after{content:"";position:absolute;inset:0;pointer-events:none;
+  box-shadow:inset 0 0 44px 8px rgba(232,85,143,.55);animation:panicPulse 1s ease-in-out infinite;z-index:15}
+@keyframes panicPulse{0%,100%{opacity:.45}50%{opacity:1}}
+.taunt-bubble{position:absolute;transform:translate(-50%,-100%);
+  background:var(--surface);border:1.5px solid var(--tc, var(--rose));color:var(--text);
+  font-size:11px;font-weight:700;font-family:var(--body);padding:4px 10px;border-radius:99px;
+  white-space:nowrap;pointer-events:none;box-shadow:var(--shadow-sm);z-index:20;
+  animation:tauntPop 1.6s ease forwards}
+@keyframes tauntPop{
+  0%{opacity:0;transform:translate(-50%,-80%) scale(.7)}
+  15%{opacity:1;transform:translate(-50%,-130%) scale(1)}
+  75%{opacity:1}
+  100%{opacity:0;transform:translate(-50%,-170%) scale(.9)}
+}
 .grid{position:absolute;inset:0;display:grid;grid-template-columns:repeat(10,1fr);grid-template-rows:repeat(10,1fr)}
 .cell{position:relative;display:flex;align-items:flex-start;justify-content:flex-start;
   font-family:var(--mono);font-size:9.5px;color:var(--faint);padding:3px 0 0 4px;
@@ -486,6 +507,7 @@ document.addEventListener('DOMContentLoaded', function () {
           <div class="tok" id="t1" style="background:#E8558F"></div>
           <div class="win" id="win">
             <h3 id="wintext"></h3>
+            <p id="winstats" style="font-family:var(--mono);font-size:12.5px;color:var(--muted)" hidden></p>
             <button class="btn pri" onclick="newGame()">Play again</button>
           </div>
         </div>
@@ -528,6 +550,7 @@ document.addEventListener('DOMContentLoaded', function () {
               <div class="pip" id="d6"></div><div class="pip" id="d7"></div><div class="pip" id="d8"></div>
             </div>
             <button class="btn pri" id="roll" onclick="roll()" style="width:100%;justify-content:center">Roll the die</button>
+            <button class="btn" id="jumpBtn" onclick="jump()" style="width:100%;justify-content:center">🦘 Jump (3 left)</button>
           </div>
 
           <p class="msg" id="msg">Your turn. Roll to start.</p>
@@ -541,7 +564,10 @@ document.addEventListener('DOMContentLoaded', function () {
             <li>Land on a ladder foot, climb it.</li>
             <li>Land on a snake head, slide down.</li>
             <li>You need an exact roll to land on 100. Overshoot and you stay put.</li>
-            <li>🐍 <b>Moving snakes</b> mode: every snake slithers in place in real time, then crawls to a new spot on its own random clock — ladders stay put. Turn up the snake count for chaos.</li>
+            <li>🐍 <b>Moving snakes</b> mode: snakes crawl back and forth along the whole board in real time, each at its own random speed. If one's body is currently over your square, it bites you — even between turns. Ladders stay put.</li>
+            <li>Rare green snakes are friendly — they'll boost you forward instead of biting.</li>
+            <li>🦘 Each player gets 3 jumps per game: hop 3 squares ahead instantly, no dice needed — handy for dodging an incoming snake.</li>
+            <li>Past 16 snakes, panic mode kicks in: the board glows red and everything speeds up.</li>
           </ul>
         </div>
       </aside>
@@ -654,7 +680,7 @@ var dynamicBoard = false, snakeAnimId = null, snakeCount = 10, snakesState = [];
 
 var PIPS = {1:[4],2:[0,8],3:[0,4,8],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
 
-var pos = [0, 0], turn = 0, mode = 1, busy = false, over = false;
+var pos = [0, 0], turn = 0, mode = 1, busy = false, over = false, jumpsLeft = [3, 3];
 
 /* ============ sound effects (Web Audio, synthesized — no asset files) ============ */
 var audioCtx = null;
@@ -735,9 +761,21 @@ function sfxLadder(){
 }
 function sfxSnake(){
   playSound(function(){
-    tone(500, 0, 0.5, { type: 'sawtooth', gain: 0.14, sweepTo: 120 });
+    [0, 0.1, 0.2].forEach(function(t, i){
+      tone(480 * Math.pow(0.8, i), t, 0.18, { type: 'sawtooth', gain: 0.14 });
+    });
     noiseBurst(0, 0.35, { freq: 1800, sweepTo: 300, gain: 0.12 });
   });
+}
+function sfxBoost(){
+  playSound(function(){
+    [660, 880, 1100].forEach(function(f, i){
+      tone(f, i * 0.07, 0.14, { type: 'sine', gain: 0.16 });
+    });
+  });
+}
+function sfxJump(){
+  playSound(function(){ tone(320, 0, 0.18, { type: 'square', gain: 0.14, sweepTo: 760 }); });
 }
 function sfxWin(){
   playSound(function(){
@@ -818,117 +856,173 @@ function renderLadders(){
     '<g id="laddersLayer">' + laddersSVG() + '</g><g id="snakesLayer">' + snakesSVG() + '</g>';
 }
 
-/* ---- dynamic board: snakes crawl continuously (rAF) with a wave ripple, each on its
-   own random clock for when it actually relocates to a new head/tail cell ---- */
-function usedCellSet(excludeIndex){
-  var used = { 1: true, 100: true };
-  Object.keys(LADDERS).forEach(function(k){ used[k] = true; used[LADDERS[k]] = true; });
-  snakesState.forEach(function(s, i){
-    if(i === excludeIndex) return;
-    used[s.head] = true; used[s.tail] = true;
-  });
-  return used;
+/* ---- dynamic board: snakes are live creatures that continuously crawl back and
+   forth along the board path (through every cell in between, never teleporting),
+   each with its own random speed, length, and personality. If a snake's body
+   currently covers a cell a player is resting on, it bites them in real time. ---- */
+var SNAKE_NAMES = ['Steve','Kaa','Slinky','Nagini','Boa','Viper','Sly','Wiggles','Hiss','Monty','Sassy','Fang','Noodle','Ziggy','Coily','Slither','Rex','Miso','Dash','Pixel'];
+var SNAKE_TAUNTS = ['Ssss... unlucky!', 'Gotcha!', 'Slithered right into you.', 'Down you go!', 'Hiss hiss!', 'Should’ve watched your step.', 'Bit ya!', 'Oops, snake!'];
+var biteCounts = [0, 0], boostCounts = [0, 0], biteCooldownUntil = [0, 0];
+var lastFrameTime = null;
+
+function pathXY(p){
+  p = Math.max(1, Math.min(100, p));
+  var n0 = Math.max(1, Math.floor(p)), n1 = Math.min(100, n0 + 1), frac = p - n0;
+  var a = cellXY(n0), b = cellXY(n1);
+  return { x: a.x + (b.x - a.x) * frac, y: a.y + (b.y - a.y) * frac };
 }
 
-function randomSnakeCells(used){
-  var attempts = 0;
-  while(attempts < 200){
-    attempts++;
-    var head = 10 + Math.floor(Math.random() * 89);
-    if(used[head]) continue;
-    var maxDrop = Math.min(30, head - 2);
-    if(maxDrop < 4) continue;
-    var drop = 4 + Math.floor(Math.random() * (maxDrop - 3));
-    var tail = head - drop;
-    if(tail < 2 || used[tail]) continue;
-    return { head: head, tail: tail };
-  }
-  return null;
-}
-
-function makeSnakeState(cells){
-  var h = cellXY(cells.head), t = cellXY(cells.tail);
+function makeSnakeState(index){
+  var length = 5 + Math.floor(Math.random() * 8);   // 5-12 cells long
+  var minPos = length + 2, maxPos = 98;
+  var friendly = Math.random() < 0.08;               // rare friendly snake — boosts instead of bites
+  var hue = friendly ? 100 + Math.random() * 30 : Math.floor(Math.random() * 360);
   return {
-    head: cells.head, tail: cells.tail,
-    hx: h.x, hy: h.y, tx: t.x, ty: t.y,
+    id: index,
+    name: SNAKE_NAMES[Math.floor(Math.random() * SNAKE_NAMES.length)],
+    friendly: friendly,
+    color: 'hsl(' + hue.toFixed(0) + ', 72%, 52%)',
+    length: length, minPos: minPos, maxPos: maxPos,
+    pos: minPos + Math.random() * (maxPos - minPos),
+    dir: Math.random() < 0.5 ? 1 : -1,
+    speed: 3 + Math.random() * 9,                    // cells/sec — random speed per snake
     waveAmp: 1.6 + Math.random() * 2.2,
-    waveSpeed: 0.6 + Math.random() * 2.0,     // radians/sec — each snake gets its own random speed
+    waveSpeed: 0.8 + Math.random() * 2.4,
     wavePhase: Math.random() * Math.PI * 2,
-    speed: 3000 + Math.random() * 7000,       // ms until this snake next relocates
-    nextShift: performance.now() + 2000 + Math.random() * 5000
+    nextTurn: performance.now() + 2000 + Math.random() * 5000,
+    headXY: null
   };
 }
 
 function generateSnakeStates(count){
   var states = [];
-  for(var i = 0; i < count; i++){
-    var used = { 1: true, 100: true };
-    Object.keys(LADDERS).forEach(function(k){ used[k] = true; used[LADDERS[k]] = true; });
-    states.forEach(function(s){ used[s.head] = true; used[s.tail] = true; });
-    var cells = randomSnakeCells(used);
-    if(cells) states.push(makeSnakeState(cells));
-  }
+  for(var i = 0; i < count; i++) states.push(makeSnakeState(i));
   return states;
 }
 
-function rebuildSnakesLookup(){
-  var map = {};
-  snakesState.forEach(function(s){ map[s.head] = s.tail; });
-  SNAKES = map;
+function findSnakeBodyHit(cell){
+  for(var i = 0; i < snakesState.length; i++){
+    var s = snakesState[i], lo = s.pos - s.length, hi = s.pos;
+    if(cell >= lo && cell <= hi) return s;
+  }
+  return null;
 }
 
-function snakeWavePath(s, t){
-  var dx = s.tx - s.hx, dy = s.ty - s.hy, len = Math.hypot(dx, dy) || 1;
-  var nx = -dy / len, ny = dx / len;
-  var segs = 10, d = '';
+function shakeBoard(){
+  var el = document.querySelector('.boardwrap');
+  if(!el) return;
+  el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake');
+}
+
+function showTaunt(text, xy, color){
+  var wrap = document.querySelector('.boardwrap');
+  if(!wrap) return;
+  var el = document.createElement('div');
+  el.className = 'taunt-bubble';
+  el.style.left = xy.x + '%';
+  el.style.top = xy.y + '%';
+  el.style.setProperty('--tc', color);
+  el.textContent = text;
+  wrap.appendChild(el);
+  setTimeout(function(){ el.remove(); }, 1600);
+}
+
+function applyBite(playerIndex, snake, now){
+  var nm = names()[playerIndex];
+  var headXY = snake.headXY || cellXY(Math.round(snake.pos));
+  if(snake.friendly){
+    pos[playerIndex] = Math.min(99, Math.round(snake.pos + snake.length));
+    place(playerIndex, true);
+    boostCounts[playerIndex]++;
+    sfxBoost();
+    say('<b>' + nm + '</b> got a lucky lift from <b>' + snake.name + '</b>! 🍀');
+    showTaunt(snake.name + ': +lift! 💚', headXY, '#16A34A');
+  } else {
+    pos[playerIndex] = Math.max(1, Math.round(snake.pos - snake.length));
+    place(playerIndex, true);
+    biteCounts[playerIndex]++;
+    sfxSnake();
+    shakeBoard();
+    var taunt = SNAKE_TAUNTS[Math.floor(Math.random() * SNAKE_TAUNTS.length)];
+    say('<b>' + nm + '</b> got bitten by <b>' + snake.name + '</b>! 🐍 ' + taunt);
+    showTaunt(snake.name + ': ' + taunt, headXY, snake.color);
+  }
+  biteCooldownUntil[playerIndex] = (now || performance.now()) + 1200;
+}
+
+function snakeBodyPath(s, t){
+  var segs = 12, raw = [];
   for(var i = 0; i <= segs; i++){
     var f = i / segs;
-    var bx = s.hx + dx * f, by = s.hy + dy * f;
+    raw.push(pathXY(s.pos - s.length + s.length * f));
+  }
+  var d = '', head = raw[segs];
+  for(var i = 0; i <= segs; i++){
+    var f = i / segs;
+    var prev = raw[Math.max(0, i - 1)], next = raw[Math.min(segs, i + 1)];
+    var dx = next.x - prev.x, dy = next.y - prev.y, len = Math.hypot(dx, dy) || 1;
+    var nx = -dy / len, ny = dx / len;
     var taper = Math.sin(Math.PI * f);
     var wob = s.waveAmp * Math.sin(t * s.waveSpeed + s.wavePhase + f * Math.PI * 2.4) * taper;
-    d += (i === 0 ? 'M' : ' L') + (bx + nx * wob) + ' ' + (by + ny * wob);
+    var px = raw[i].x + nx * wob, py = raw[i].y + ny * wob;
+    if(i === segs) head = { x: px, y: py };
+    d += (i === 0 ? 'M' : ' L') + px + ' ' + py;
   }
-  var svg = '<path d="' + d + '" fill="none" stroke="#E8558F" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.8"/>';
-  svg += '<circle cx="' + s.hx + '" cy="' + s.hy + '" r="2.1" fill="#E8558F"/>';
-  svg += '<circle cx="' + (s.hx - 0.8) + '" cy="' + (s.hy - 0.5) + '" r="0.42" fill="#fff"/>';
-  svg += '<circle cx="' + (s.hx + 0.8) + '" cy="' + (s.hy - 0.5) + '" r="0.42" fill="#fff"/>';
-  return svg;
+  return { d: d, head: head };
 }
 
 function snakeAnimFrame(now){
   var panel = document.getElementById('game-snl');
-  if(!dynamicBoard || (panel && panel.hidden)){ snakeAnimId = null; return; }
+  if(!dynamicBoard || (panel && panel.hidden)){ snakeAnimId = null; lastFrameTime = null; return; }
 
-  var t = now / 1000, changed = false;
+  if(lastFrameTime === null) lastFrameTime = now;
+  var dt = Math.min(0.05, (now - lastFrameTime) / 1000);
+  lastFrameTime = now;
+  var t = now / 1000;
+  var panic = snakeCount >= 16;
+
   if(!busy && !over){
-    snakesState.forEach(function(s, i){
-      if(now >= s.nextShift){
-        var cells = randomSnakeCells(usedCellSet(i));
-        if(cells){ s.head = cells.head; s.tail = cells.tail; s.speed = 3000 + Math.random() * 7000; changed = true; }
-        s.nextShift = now + s.speed;
-      }
-    });
+    for(var pi = 0; pi < 2; pi++){
+      if(pos[pi] <= 0 || pos[pi] >= 100) continue;
+      if(now < biteCooldownUntil[pi]) continue;
+      var hit = findSnakeBodyHit(pos[pi]);
+      if(hit) applyBite(pi, hit, now);
+    }
   }
-  if(changed) rebuildSnakesLookup();
 
-  var svg = '';
   snakesState.forEach(function(s){
-    var targetH = cellXY(s.head), targetT = cellXY(s.tail);
-    s.hx += (targetH.x - s.hx) * 0.03;
-    s.hy += (targetH.y - s.hy) * 0.03;
-    s.tx += (targetT.x - s.tx) * 0.03;
-    s.ty += (targetT.y - s.ty) * 0.03;
-    svg += snakeWavePath(s, t);
+    s.pos += s.dir * s.speed * dt * (panic ? 1.3 : 1);
+    if(s.pos >= s.maxPos){ s.pos = s.maxPos; s.dir = -1; }
+    if(s.pos <= s.minPos){ s.pos = s.minPos; s.dir = 1; }
+    if(now >= s.nextTurn){
+      if(Math.random() < 0.5) s.dir *= -1;
+      s.speed = 3 + Math.random() * 9;
+      s.nextTurn = now + 2000 + Math.random() * 5000;
+    }
+  });
+
+  var svg = '', tt = panic ? t * 1.8 : t;
+  snakesState.forEach(function(s){
+    var built = snakeBodyPath(s, tt);
+    s.headXY = built.head;
+    var col = s.color;
+    svg += '<path d="' + built.d + '" fill="none" stroke="' + col + '" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.85"/>';
+    svg += '<circle cx="' + built.head.x + '" cy="' + built.head.y + '" r="2.1" fill="' + col + '"/>';
+    svg += '<circle cx="' + (built.head.x - 0.8) + '" cy="' + (built.head.y - 0.5) + '" r="0.42" fill="' + (s.friendly ? '#08320f' : '#fff') + '"/>';
+    svg += '<circle cx="' + (built.head.x + 0.8) + '" cy="' + (built.head.y - 0.5) + '" r="0.42" fill="' + (s.friendly ? '#08320f' : '#fff') + '"/>';
   });
   var layer = document.getElementById('snakesLayer');
   if(layer) layer.innerHTML = svg;
+
+  var boardEl = document.querySelector('.boardwrap');
+  if(boardEl) boardEl.classList.toggle('panic', panic);
 
   snakeAnimId = requestAnimationFrame(snakeAnimFrame);
 }
 
 function startSnakeAnimation(){
   snakesState = generateSnakeStates(snakeCount);
-  rebuildSnakesLookup();
+  lastFrameTime = null;
   if(snakeAnimId) cancelAnimationFrame(snakeAnimId);
   snakeAnimId = requestAnimationFrame(snakeAnimFrame);
 }
@@ -936,6 +1030,8 @@ function startSnakeAnimation(){
 function stopSnakeAnimation(){
   if(snakeAnimId){ cancelAnimationFrame(snakeAnimId); snakeAnimId = null; }
   SNAKES = CLASSIC_SNAKES;
+  var boardEl = document.querySelector('.boardwrap');
+  if(boardEl) boardEl.classList.remove('panic');
 }
 
 function resumeSnakeAnimationIfNeeded(){
@@ -992,6 +1088,7 @@ function setTurnUI(){
   document.getElementById('p1').classList.toggle('turn', turn === 1);
   var human = (mode === 2) || turn === 0;
   document.getElementById('roll').disabled = busy || over || !human;
+  updateJumpUI();
 }
 
 function setMode(m){
@@ -1005,11 +1102,44 @@ function setMode(m){
 
 function newGame(){
   pos = [0, 0]; turn = 0; busy = false; over = false;
+  biteCounts = [0, 0]; boostCounts = [0, 0]; biteCooldownUntil = [0, 0];
+  jumpsLeft = [3, 3];
   document.getElementById('win').classList.remove('show');
   showDie(1);
   place(0); place(1);
   say('<b>' + names()[0] + '</b> starts. Roll to begin.');
   setTurnUI();
+}
+
+function jump(){
+  var human = (mode === 2) || turn === 0;
+  if(busy || over || !human || jumpsLeft[turn] <= 0) return;
+  jumpsLeft[turn]--;
+  updateJumpUI();
+  busy = true; setTurnUI();
+  sfxJump();
+  var me = turn, nm = names()[me];
+  var target = Math.min(99, pos[me] + 3);
+  say('<b>' + nm + '</b> jumps ahead! 🦘');
+  var step = pos[me];
+  var walk = setInterval(function(){
+    step++;
+    pos[me] = step;
+    place(me);
+    sfxStep();
+    if(step >= target){
+      clearInterval(walk);
+      setTimeout(function(){ afterMove(me, 0, nm); }, 200);
+    }
+  }, 110);
+}
+
+function updateJumpUI(){
+  var btn = document.getElementById('jumpBtn');
+  if(!btn) return;
+  btn.textContent = '🦘 Jump (' + jumpsLeft[turn] + ' left)';
+  var human = (mode === 2) || turn === 0;
+  btn.disabled = busy || over || !human || jumpsLeft[turn] <= 0;
 }
 
 function roll(){
@@ -1058,6 +1188,14 @@ function afterMove(me, v, nm){
     over = true;
     sfxWin();
     document.getElementById('wintext').textContent = nm + ' wins!';
+    var stats = document.getElementById('winstats');
+    if(dynamicBoard){
+      stats.textContent = names()[0] + ': ' + biteCounts[0] + ' bites, ' + boostCounts[0] + ' boosts  ·  ' +
+        names()[1] + ': ' + biteCounts[1] + ' bites, ' + boostCounts[1] + ' boosts';
+      stats.hidden = false;
+    } else {
+      stats.hidden = true;
+    }
     document.getElementById('win').classList.add('show');
     say('<b>' + nm + '</b> reached 100.');
     busy = false; setTurnUI();
@@ -1071,7 +1209,13 @@ function afterMove(me, v, nm){
     say('<b>' + nm + '</b> rolled ' + v + ' and climbed a ladder to ' + pos[me] + '.');
     return setTimeout(function(){ afterMove(me, v, nm); }, 900);
   }
-  if(SNAKES[at]){
+
+  var dynHit = dynamicBoard ? findSnakeBodyHit(at) : null;
+  if(dynHit){
+    applyBite(me, dynHit, performance.now());
+    return setTimeout(function(){ afterMove(me, v, nm); }, 900);
+  }
+  if(!dynamicBoard && SNAKES[at]){
     pos[me] = SNAKES[at];
     place(me, true);
     sfxSnake();
