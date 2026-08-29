@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>مارپله — Snakes &amp; Ladders | Amin Abbasishahkoo</title>
-<meta name="description" content="Two playable browser games: snakes and ladders with dice, and a Wordle clone with a fresh random word each round and a saved scoreboard.">
+<meta name="description" content="Three playable browser games: snakes and ladders with dice, a Wordle clone with a fresh random word each round, and a Human-or-AI writing quiz.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Vazirmatn:wght@400;600;700&display=swap" rel="stylesheet">
@@ -386,6 +386,34 @@ document.addEventListener('DOMContentLoaded', function () {
 .wscore-row .wbest{font-family:var(--mono);color:var(--iris);font-size:13px}
 .wscore-row .wlast{font-family:var(--mono);color:var(--faint);font-size:12px;white-space:nowrap}
 .wempty{color:var(--faint);font-size:14px}
+
+/* ============ guess the model ============ */
+.gm-topbar{display:flex;align-items:center;justify-content:space-between;max-width:520px;margin:0 auto 18px}
+.gm-progress{display:flex;gap:5px}
+.gm-dot{width:9px;height:9px;border-radius:50%;background:var(--line-2);transition:all .25s}
+.gm-dot.done{background:var(--iris)}
+.gm-dot.current{background:var(--rose);transform:scale(1.25)}
+.gm-tally{font-family:var(--mono);font-size:13px;color:var(--muted)}
+.gm-cardwrap{position:relative;max-width:520px;margin:0 auto}
+.gm-card{position:relative;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);
+  padding:30px 28px;min-height:180px;display:flex;flex-direction:column;justify-content:center;
+  box-shadow:var(--shadow-sm);transition:border-color .25s,box-shadow .25s}
+.gm-card.correct{border-color:var(--mint);box-shadow:0 0 0 3px color-mix(in srgb,var(--mint) 20%,transparent)}
+.gm-card.wrong{border-color:var(--rose);box-shadow:0 0 0 3px color-mix(in srgb,var(--rose) 18%,transparent)}
+.gm-cat{font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--iris);margin-bottom:14px;display:block}
+.gm-text{font-family:var(--display);font-size:19px;line-height:1.55;letter-spacing:-.01em;white-space:pre-line}
+.gm-cite{font-size:13.5px;color:var(--muted);margin-top:16px;padding-top:14px;border-top:1px solid var(--line)}
+.gm-choices{display:flex;gap:12px;margin-top:20px}
+.gm-choice{flex:1;display:flex;align-items:center;justify-content:center;gap:9px;
+  padding:16px;border-radius:12px;border:1px solid var(--line);background:var(--surface);
+  font-family:var(--body);font-weight:600;font-size:15.5px;color:var(--text);cursor:pointer;
+  transition:all .18s}
+.gm-choice:hover:not(:disabled){transform:translateY(-2px);border-color:var(--line-2);box-shadow:var(--shadow-sm)}
+.gm-choice:disabled{cursor:not-allowed}
+.gm-emoji{font-size:19px}
+.gm-choice.reveal-right{border-color:var(--mint);background:color-mix(in srgb,var(--mint) 14%,transparent);color:var(--text)}
+.gm-choice.reveal-wrong{border-color:var(--rose);background:color-mix(in srgb,var(--rose) 12%,transparent);color:var(--text)}
 [hidden]{display:none !important}
 </style>
 </head>
@@ -413,6 +441,7 @@ document.addEventListener('DOMContentLoaded', function () {
   <div class="gtabs rv">
     <button class="opt on" id="gtab-snl" onclick="switchGame('snl')" style="flex:1">Snakes &amp; Ladders</button>
     <button class="opt" id="gtab-wordle" onclick="switchGame('wordle')" style="flex:1">Wordle</button>
+    <button class="opt" id="gtab-guess" onclick="switchGame('guess')" style="flex:1">Guess the Model</button>
   </div>
 </div>
 
@@ -431,6 +460,15 @@ document.addEventListener('DOMContentLoaded', function () {
     <span class="eyebrow rv">Play</span>
     <h1 class="rv">Word<span class="grad">le</span></h1>
     <p class="rv">Guess the 5-letter word in 6 tries. A fresh word is pulled from a random-word API every game. Enter your name to save your score.</p>
+  </div>
+</header>
+
+<header class="phead" id="head-guess" hidden>
+  <div class="aurora" aria-hidden="true"><div class="blob b2"></div><div class="blob b3"></div></div>
+  <div class="wrap" style="position:relative;z-index:1">
+    <span class="eyebrow rv">Play</span>
+    <h1 class="rv">Guess the <span class="grad">Model</span></h1>
+    <p class="rv">Ten short passages — real quotes, real news, real classic literature, mixed in with text written to sound like it. Human or AI: can you tell which is which?</p>
   </div>
 </header>
 
@@ -527,6 +565,57 @@ document.addEventListener('DOMContentLoaded', function () {
             <li>Yellow — right letter, wrong spot.</li>
             <li>Gray — letter isn't in the word.</li>
             <li>6 guesses. A new random word every game.</li>
+          </ul>
+        </div>
+      </aside>
+    </div>
+
+    <div class="game" id="game-guess" hidden>
+      <div class="rv">
+        <div class="gm-topbar">
+          <div class="gm-progress" id="gmProgress"></div>
+          <div class="gm-tally" id="gmTally">Score 0/0</div>
+        </div>
+
+        <div class="gm-cardwrap">
+          <div class="gm-card" id="gmCard">
+            <span class="gm-cat" id="gmCat">Category</span>
+            <p class="gm-text" id="gmText">Loading…</p>
+            <p class="gm-cite" id="gmCite" hidden></p>
+          </div>
+
+          <div class="gm-choices" id="gmChoices">
+            <button class="gm-choice human" id="gmHuman" onclick="gmAnswer('human')">
+              <span class="gm-emoji">🧑</span> Human
+            </button>
+            <button class="gm-choice ai" id="gmAi" onclick="gmAnswer('ai')">
+              <span class="gm-emoji">🤖</span> AI
+            </button>
+          </div>
+
+          <button class="btn pri" id="gmNext" onclick="gmNextRound()" style="display:none;width:100%;justify-content:center;margin-top:14px">Next</button>
+
+          <div class="win" id="gmWin">
+            <h3 id="gmWinText"></h3>
+            <p id="gmWinScore" style="color:var(--muted)"></p>
+            <button class="btn pri" onclick="gmStart()">Play again</button>
+          </div>
+        </div>
+      </div>
+
+      <aside class="rv">
+        <div class="panel">
+          <h3 style="font-family:var(--display);font-weight:700;font-size:16px;margin-bottom:12px">Best score</h3>
+          <p id="gmBest" style="font-family:var(--mono);color:var(--iris);font-size:22px;font-weight:700">—</p>
+        </div>
+
+        <div class="panel" style="margin-top:16px">
+          <h3 style="font-family:var(--display);font-weight:700;font-size:16px;margin-bottom:12px">How it works</h3>
+          <ul class="rules" style="margin-left:17px">
+            <li>10 short passages, one category each: literature, speeches, news, letters, quotes, and poetry.</li>
+            <li>Half are genuine — real quotes, real news ledes, real classic openings.</li>
+            <li>Half were written to sound like a typical AI answer.</li>
+            <li>Pick Human or AI, then see the source once you answer.</li>
           </ul>
         </div>
       </aside>
@@ -727,17 +816,20 @@ newGame();
 
 <script>
 /* ============ game switcher ============ */
+var GAME_TITLES = {
+  snl: 'مارپله — Snakes & Ladders | Amin Abbasishahkoo',
+  wordle: 'Wordle | Amin Abbasishahkoo',
+  guess: 'Guess the Model | Amin Abbasishahkoo'
+};
 function switchGame(which){
-  var isSnl = which === 'snl';
-  document.getElementById('gtab-snl').classList.toggle('on', isSnl);
-  document.getElementById('gtab-wordle').classList.toggle('on', !isSnl);
-  document.getElementById('head-snl').hidden = !isSnl;
-  document.getElementById('head-wordle').hidden = isSnl;
-  document.getElementById('game-snl').hidden = !isSnl;
-  document.getElementById('game-wordle').hidden = isSnl;
-  document.title = isSnl
-    ? 'مارپله — Snakes & Ladders | Amin Abbasishahkoo'
-    : 'Wordle | Amin Abbasishahkoo';
+  ['snl', 'wordle', 'guess'].forEach(function(id){
+    var active = id === which;
+    document.getElementById('gtab-' + id).classList.toggle('on', active);
+    document.getElementById('head-' + id).hidden = !active;
+    document.getElementById('game-' + id).hidden = !active;
+  });
+  document.title = GAME_TITLES[which];
+  if(which === 'guess' && !gmStarted) gmStart();
 }
 
 /* ============ wordle ============ */
@@ -974,6 +1066,222 @@ document.getElementById('wPlayerName').addEventListener('keydown', function(e){
 buildWordleBoard();
 buildWordleKeyboard();
 wRenderScores();
+</script>
+
+<script>
+/* ============ guess the model ============ */
+/* "human" entries are genuine, verifiable sources (public-domain literature,
+   real news ledes, real quotes/letters). "ai" entries are written to match
+   the same category/topic in a typical AI-generated style. */
+var GM_DATA = [
+  {
+    category: 'Novel opening',
+    human: {
+      text: 'It is a truth universally acknowledged, that a single man in possession of a good fortune must be in want of a wife.',
+      cite: 'Jane Austen, Pride and Prejudice (1813)'
+    },
+    ai: {
+      text: 'The old lighthouse stood sentinel against the churning gray sea, its weathered stones holding secrets that time itself seemed reluctant to surrender.'
+    }
+  },
+  {
+    category: "Children's story",
+    human: {
+      text: 'Alice was beginning to get very tired of sitting by her sister on the bank, and of having nothing to do: once or twice she had peeped into the book her sister was reading, but it had no pictures or conversations in it, "and what is the use of a book," thought Alice, "without pictures or conversations?"',
+      cite: "Lewis Carroll, Alice's Adventures in Wonderland (1865)"
+    },
+    ai: {
+      text: 'Once upon a time, in a forest where the trees whispered secrets to the wind, a curious little fox named Pip discovered a door that shouldn’t have been there.'
+    }
+  },
+  {
+    category: 'Historical speech',
+    human: {
+      text: 'Four score and seven years ago our fathers brought forth, on this continent, a new nation, conceived in Liberty, and dedicated to the proposition that all men are created equal.',
+      cite: 'Abraham Lincoln, the Gettysburg Address (1863)'
+    },
+    ai: {
+      text: 'As you stand at this remarkable crossroads in your journey, remember that every challenge you’ve faced has shaped you into the resilient, capable person ready to embrace whatever comes next.'
+    }
+  },
+  {
+    category: 'Obituary',
+    human: {
+      text: 'Former US Representative Dan Rostenkowski died of lung cancer Wednesday at his vacation home in Genoa City, Wisconsin. Rostenkowski, whose political career ended in the early 1990s after he was convicted on fraud charges, was 82.',
+      cite: "Wikinews, “Former US Representative Dan Rostenkowski dies aged 82” (Aug 14, 2010)"
+    },
+    ai: {
+      text: 'Local business owner and community volunteer Harold Jennings passed away peacefully on Tuesday at the age of 76. Jennings was widely remembered for his decades of dedicated service to the neighborhood he called home.'
+    }
+  },
+  {
+    category: 'Music news',
+    human: {
+      text: 'Judith Durham, known as the lead singer of Australian band The Seekers, died in Melbourne on Friday, August 5, from complications of bronchiectasis, a lung disease. She was 79.',
+      cite: "Wikinews, “Judith Durham, lead singer of The Seekers, dies at 79” (Aug 10, 2022)"
+    },
+    ai: {
+      text: 'Rising indie artist Maren Cole announced Thursday that her long-awaited second album will be released early next year, following a series of sold-out shows across the country.'
+    }
+  },
+  {
+    category: 'Encyclopedia entry',
+    human: {
+      text: 'Ruskin Park is a park in the London Borough of Lambeth, London, England, close to Camberwell, Loughborough Junction and Herne Hill.',
+      cite: 'Wikipedia, "Ruskin Park"'
+    },
+    ai: {
+      text: 'A black hole is a region of space where gravity is so strong that nothing, not even light, can escape its pull. This fascinating phenomenon continues to challenge our understanding of physics and the universe.'
+    }
+  },
+  {
+    category: 'Quote',
+    human: {
+      text: 'Always do right. This will gratify some people, and astonish the rest.',
+      cite: "Mark Twain, address to the Young People's Society, Brooklyn (1901)"
+    },
+    ai: {
+      text: 'Every challenge you face today is simply an opportunity in disguise, waiting for you to unlock its potential and grow stronger than before.'
+    }
+  },
+  {
+    category: 'Quote',
+    human: {
+      text: 'Life is like riding a bicycle. To keep your balance you must keep moving.',
+      cite: 'Albert Einstein, letter to his son Eduard (1930)'
+    },
+    ai: {
+      text: 'Success is not a destination but a journey — one that requires patience, resilience, and the courage to keep moving forward, even when the path ahead seems unclear.'
+    }
+  },
+  {
+    category: 'Personal letter',
+    human: {
+      text: 'My dear Theo and dear Jo. I’ve just received the letter in which you say that the child is ill; I’d very much like to come and see you.',
+      cite: 'Vincent van Gogh, letter to Theo & Jo van Gogh-Bonger, Auvers-sur-Oise (2 July 1890)'
+    },
+    ai: {
+      text: 'Dear friend, I hope this letter finds you well. It’s been far too long since we last spoke, and I often find myself reminiscing about the good times we shared.'
+    }
+  },
+  {
+    category: 'Poem',
+    human: {
+      text: 'Hope is the thing with feathers\nThat perches in the soul,\nAnd sings the tune without the words,\nAnd never stops at all,',
+      cite: 'Emily Dickinson, "Hope is the thing with feathers" (1891)'
+    },
+    ai: {
+      text: 'Beneath the starlit sky so wide,\nWhere dreams and shadows gently glide,\nWe wander through the quiet night,\nChasing stars and soft moonlight.'
+    }
+  }
+];
+
+var gmStarted = false, gmSequence = [], gmRound = 0, gmScore = 0, gmAnswered = false;
+
+function gmLoadBest(){
+  try { return parseInt(localStorage.getItem('guessModelBest') || '0', 10) || 0; } catch(e){ return 0; }
+}
+function gmSaveBest(score){
+  var best = Math.max(gmLoadBest(), score);
+  try { localStorage.setItem('guessModelBest', String(best)); } catch(e){}
+  document.getElementById('gmBest').textContent = best + ' / ' + GM_DATA.length;
+}
+
+function gmStart(){
+  gmStarted = true;
+  gmRound = 0; gmScore = 0; gmAnswered = false;
+
+  gmSequence = GM_DATA.map(function(item){
+    var showHuman = Math.random() < 0.5;
+    var chosen = showHuman ? item.human : item.ai;
+    return { category: item.category, text: chosen.text, isHuman: showHuman, cite: showHuman ? chosen.cite : '' };
+  });
+  for(var i = gmSequence.length - 1; i > 0; i--){
+    var j = Math.floor(Math.random() * (i + 1));
+    var t = gmSequence[i]; gmSequence[i] = gmSequence[j]; gmSequence[j] = t;
+  }
+
+  document.getElementById('gmWin').classList.remove('show');
+  document.getElementById('gmBest').textContent = gmLoadBest() + ' / ' + GM_DATA.length;
+  gmShowRound();
+}
+
+function gmRenderProgress(){
+  var html = '';
+  for(var i = 0; i < gmSequence.length; i++){
+    var cls = 'gm-dot' + (i < gmRound ? ' done' : '') + (i === gmRound ? ' current' : '');
+    html += '<span class="' + cls + '"></span>';
+  }
+  document.getElementById('gmProgress').innerHTML = html;
+  document.getElementById('gmTally').textContent = 'Score ' + gmScore + '/' + gmRound;
+}
+
+function gmShowRound(){
+  if(gmRound >= gmSequence.length) return gmFinish();
+  gmAnswered = false;
+  var r = gmSequence[gmRound];
+
+  document.getElementById('gmCat').textContent = r.category;
+  document.getElementById('gmText').textContent = r.text;
+  var cite = document.getElementById('gmCite');
+  cite.hidden = true; cite.textContent = '';
+
+  document.getElementById('gmCard').classList.remove('correct', 'wrong');
+  ['gmHuman', 'gmAi'].forEach(function(id){
+    var b = document.getElementById(id);
+    b.disabled = false;
+    b.classList.remove('reveal-right', 'reveal-wrong');
+  });
+  document.getElementById('gmNext').style.display = 'none';
+  gmRenderProgress();
+}
+
+function gmAnswer(choice){
+  if(gmAnswered) return;
+  gmAnswered = true;
+
+  var r = gmSequence[gmRound];
+  var correct = (choice === 'human') === r.isHuman;
+  if(correct) gmScore++;
+
+  var h = document.getElementById('gmHuman'), a = document.getElementById('gmAi');
+  h.disabled = true; a.disabled = true;
+  var rightBtn = r.isHuman ? h : a, wrongBtn = r.isHuman ? a : h;
+  rightBtn.classList.add('reveal-right');
+  if(!correct) wrongBtn.classList.add('reveal-wrong');
+
+  document.getElementById('gmCard').classList.add(correct ? 'correct' : 'wrong');
+
+  var cite = document.getElementById('gmCite');
+  cite.textContent = r.isHuman ? ('Human-written — ' + r.cite) : 'AI-written.';
+  cite.hidden = false;
+
+  document.getElementById('gmTally').textContent = 'Score ' + gmScore + '/' + (gmRound + 1);
+  document.getElementById('gmNext').style.display = 'flex';
+}
+
+function gmNextRound(){
+  gmRound++;
+  if(gmRound >= gmSequence.length) return gmFinish();
+  gmShowRound();
+}
+
+function gmFinish(){
+  gmRenderProgress();
+  gmSaveBest(gmScore);
+  var pct = Math.round((gmScore / gmSequence.length) * 100);
+  var msg;
+  if(gmScore === gmSequence.length) msg = 'Perfect score — the models didn’t fool you once.';
+  else if(pct >= 70) msg = 'Sharp eye — you caught most of them.';
+  else if(pct >= 40) msg = 'A coin flip with better odds.';
+  else msg = 'The AI got you more than once.';
+
+  document.getElementById('gmWinText').textContent = gmScore + ' / ' + gmSequence.length;
+  document.getElementById('gmWinScore').textContent = msg;
+  document.getElementById('gmWin').classList.add('show');
+}
+
+document.getElementById('gmBest').textContent = gmLoadBest() + ' / ' + GM_DATA.length;
 </script>
 </body>
 </html>
