@@ -497,6 +497,7 @@ document.addEventListener('DOMContentLoaded', function () {
           <div class="opts">
             <button class="opt on" id="m1" onclick="setMode(1)">vs computer</button>
             <button class="opt" id="m2" onclick="setMode(2)">2 players</button>
+            <button class="tt" id="soundToggle" onclick="toggleSound()" aria-label="Toggle sound effects">🔊</button>
           </div>
 
           <div class="who">
@@ -638,6 +639,108 @@ var PIPS = {1:[4],2:[0,8],3:[0,4,8],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
 
 var pos = [0, 0], turn = 0, mode = 1, busy = false, over = false;
 
+/* ============ sound effects (Web Audio, synthesized — no asset files) ============ */
+var audioCtx = null;
+var soundOn = true;
+try { soundOn = localStorage.getItem('snlSound') !== 'off'; } catch(e){}
+
+function getAudioCtx(){
+  if(!audioCtx){
+    var Ctx = window.AudioContext || window.webkitAudioContext;
+    if(!Ctx) return null;
+    audioCtx = new Ctx();
+  }
+  if(audioCtx.state === 'suspended') audioCtx.resume();
+  return audioCtx;
+}
+
+function tone(freq, start, dur, opts){
+  var ctx = getAudioCtx();
+  if(!ctx) return;
+  opts = opts || {};
+  var t0 = ctx.currentTime + start;
+  var osc = ctx.createOscillator(), gain = ctx.createGain();
+  osc.type = opts.type || 'sine';
+  osc.frequency.setValueAtTime(freq, t0);
+  if(opts.sweepTo) osc.frequency.exponentialRampToValueAtTime(Math.max(1, opts.sweepTo), t0 + dur);
+  var peak = opts.gain != null ? opts.gain : 0.18;
+  gain.gain.setValueAtTime(0.0001, t0);
+  gain.gain.exponentialRampToValueAtTime(peak, t0 + Math.min(0.02, dur / 3));
+  gain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  osc.connect(gain).connect(ctx.destination);
+  osc.start(t0);
+  osc.stop(t0 + dur + 0.02);
+}
+
+function noiseBurst(start, dur, opts){
+  var ctx = getAudioCtx();
+  if(!ctx) return;
+  opts = opts || {};
+  var t0 = ctx.currentTime + start;
+  var size = Math.max(1, Math.floor(ctx.sampleRate * dur));
+  var buffer = ctx.createBuffer(1, size, ctx.sampleRate);
+  var data = buffer.getChannelData(0);
+  for(var i = 0; i < size; i++) data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / size, 2);
+  var src = ctx.createBufferSource();
+  src.buffer = buffer;
+  var filter = ctx.createBiquadFilter();
+  filter.type = opts.filterType || 'bandpass';
+  filter.frequency.setValueAtTime(opts.freq || 1200, t0);
+  if(opts.sweepTo) filter.frequency.exponentialRampToValueAtTime(opts.sweepTo, t0 + dur);
+  var gain = ctx.createGain();
+  gain.gain.setValueAtTime(opts.gain || 0.25, t0);
+  gain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  src.connect(filter).connect(gain).connect(ctx.destination);
+  src.start(t0);
+}
+
+function playSound(fn){
+  if(!soundOn) return;
+  try { fn(); } catch(e){}
+}
+
+function sfxDice(){
+  playSound(function(){
+    for(var i = 0; i < 5; i++){
+      noiseBurst(i * 0.09, 0.06, { freq: 1400 + Math.random() * 800, gain: 0.22 });
+    }
+  });
+}
+function sfxStep(){
+  playSound(function(){ tone(520, 0, 0.07, { type: 'triangle', gain: 0.14 }); });
+}
+function sfxLadder(){
+  playSound(function(){
+    [0, 0.09, 0.18].forEach(function(t, i){
+      tone(440 * Math.pow(1.26, i), t, 0.16, { type: 'triangle', gain: 0.16 });
+    });
+  });
+}
+function sfxSnake(){
+  playSound(function(){
+    tone(500, 0, 0.5, { type: 'sawtooth', gain: 0.14, sweepTo: 120 });
+    noiseBurst(0, 0.35, { freq: 1800, sweepTo: 300, gain: 0.12 });
+  });
+}
+function sfxWin(){
+  playSound(function(){
+    [523.25, 659.25, 783.99, 1046.5].forEach(function(f, i){
+      tone(f, i * 0.12, 0.28, { type: 'triangle', gain: 0.2 });
+    });
+  });
+}
+
+function toggleSound(){
+  soundOn = !soundOn;
+  try { localStorage.setItem('snlSound', soundOn ? 'on' : 'off'); } catch(e){}
+  updateSoundBtn();
+  if(soundOn) sfxStep();
+}
+function updateSoundBtn(){
+  var b = document.getElementById('soundToggle');
+  if(b) b.textContent = soundOn ? '🔊' : '🔇';
+}
+
 function cellXY(n){
   if(n < 1) return {x:2.5, y:102};
   var r = Math.floor((n - 1) / 10);
@@ -740,6 +843,7 @@ function roll(){
   die.classList.remove('rolling');
   void die.offsetWidth;
   die.classList.add('rolling');
+  sfxDice();
 
   var flicker = setInterval(function(){ showDie(1 + Math.floor(Math.random() * 6)); }, 70);
   setTimeout(function(){
@@ -763,6 +867,7 @@ function move(v){
     step++;
     pos[me] = step;
     place(me);
+    sfxStep();
     if(step >= target){
       clearInterval(walk);
       setTimeout(function(){ afterMove(me, v, nm); }, 320);
@@ -775,6 +880,7 @@ function afterMove(me, v, nm){
 
   if(at === 100){
     over = true;
+    sfxWin();
     document.getElementById('wintext').textContent = nm + ' wins!';
     document.getElementById('win').classList.add('show');
     say('<b>' + nm + '</b> reached 100.');
@@ -785,12 +891,14 @@ function afterMove(me, v, nm){
   if(LADDERS[at]){
     pos[me] = LADDERS[at];
     place(me, true);
+    sfxLadder();
     say('<b>' + nm + '</b> rolled ' + v + ' and climbed a ladder to ' + pos[me] + '.');
     return setTimeout(function(){ afterMove(me, v, nm); }, 900);
   }
   if(SNAKES[at]){
     pos[me] = SNAKES[at];
     place(me, true);
+    sfxSnake();
     say('<b>' + nm + '</b> rolled ' + v + ' and slid down a snake to ' + pos[me] + '.');
     return setTimeout(function(){ afterMove(me, v, nm); }, 900);
   }
@@ -811,6 +919,7 @@ function endTurn(v){
   if(!over && mode === 1 && turn === 1) setTimeout(roll, 750);
 }
 
+updateSoundBtn();
 newGame();
 </script>
 
