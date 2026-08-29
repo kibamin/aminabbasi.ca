@@ -500,6 +500,11 @@ document.addEventListener('DOMContentLoaded', function () {
             <button class="tt" id="soundToggle" onclick="toggleSound()" aria-label="Toggle sound effects">🔊</button>
           </div>
 
+          <div class="opts" style="margin-top:9px">
+            <button class="opt on" id="bm-classic" onclick="setBoardMode(false)">Classic board</button>
+            <button class="opt" id="bm-dynamic" onclick="setBoardMode(true)">🐍 Moving snakes</button>
+          </div>
+
           <div class="who">
             <div class="prow turn" id="p0"><span class="pdot" style="background:#5B4FE9"></span>
               <span class="pname" id="n0">You</span><span class="psq" id="s0">0</span></div>
@@ -527,6 +532,7 @@ document.addEventListener('DOMContentLoaded', function () {
             <li>Land on a ladder foot, climb it.</li>
             <li>Land on a snake head, slide down.</li>
             <li>You need an exact roll to land on 100. Overshoot and you stay put.</li>
+            <li>🐍 <b>Moving snakes</b> mode: every 10 seconds the snakes slither to new positions on the board — ladders stay put.</li>
           </ul>
         </div>
       </aside>
@@ -633,7 +639,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
 <script>
 var LADDERS = {2:38, 7:14, 8:31, 15:26, 21:42, 28:84, 36:44, 51:67, 71:91, 78:98};
-var SNAKES  = {16:6, 46:25, 49:11, 62:19, 64:60, 74:53, 89:68, 92:88, 95:75, 99:80};
+var CLASSIC_SNAKES = {16:6, 46:25, 49:11, 62:19, 64:60, 74:53, 89:68, 92:88, 95:75, 99:80};
+var SNAKES = CLASSIC_SNAKES;
+var dynamicBoard = false, snakeTimer = null;
 
 var PIPS = {1:[4],2:[0,8],3:[0,4,8],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
 
@@ -750,7 +758,7 @@ function cellXY(n){
 }
 
 /* ---- build board ---- */
-(function build(){
+function buildGrid(){
   var grid = document.getElementById('grid'), html = '';
   for(var row = 9; row >= 0; row--){
     for(var i = 0; i < 10; i++){
@@ -761,7 +769,9 @@ function cellXY(n){
     }
   }
   grid.innerHTML = html;
+}
 
+function laddersSVG(){
   var svg = '';
   Object.keys(LADDERS).forEach(function(k){
     var a = cellXY(+k), b = cellXY(LADDERS[k]);
@@ -775,6 +785,11 @@ function cellXY(n){
       svg += '<line x1="' + (mx + px) + '" y1="' + (my + py) + '" x2="' + (mx - px) + '" y2="' + (my - py) + '" stroke="#0FA98E" stroke-width="0.5" opacity="0.65"/>';
     }
   });
+  return svg;
+}
+
+function snakesSVG(){
+  var svg = '';
   Object.keys(SNAKES).forEach(function(k){
     var a = cellXY(+k), b = cellXY(SNAKES[k]);
     var mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
@@ -786,8 +801,71 @@ function cellXY(n){
     svg += '<circle cx="' + (a.x - 0.8) + '" cy="' + (a.y - 0.5) + '" r="0.42" fill="#fff"/>';
     svg += '<circle cx="' + (a.x + 0.8) + '" cy="' + (a.y - 0.5) + '" r="0.42" fill="#fff"/>';
   });
-  document.getElementById('paths').innerHTML = svg;
-})();
+  return svg;
+}
+
+function renderLadders(){
+  document.getElementById('paths').innerHTML =
+    '<g id="laddersLayer">' + laddersSVG() + '</g><g id="snakesLayer">' + snakesSVG() + '</g>';
+}
+
+function renderSnakes(){
+  var layer = document.getElementById('snakesLayer');
+  layer.style.opacity = 0;
+  layer.innerHTML = snakesSVG();
+  requestAnimationFrame(function(){ layer.style.transition = 'opacity .5s'; layer.style.opacity = 1; });
+}
+
+function generateRandomSnakes(count){
+  var used = { 1: true, 100: true };
+  Object.keys(LADDERS).forEach(function(k){ used[k] = true; used[LADDERS[k]] = true; });
+  var snakes = {}, attempts = 0;
+  while(Object.keys(snakes).length < count && attempts < 800){
+    attempts++;
+    var head = 10 + Math.floor(Math.random() * 89);
+    if(used[head]) continue;
+    var maxDrop = Math.min(30, head - 2);
+    if(maxDrop < 4) continue;
+    var drop = 4 + Math.floor(Math.random() * (maxDrop - 3));
+    var tail = head - drop;
+    if(tail < 2 || used[tail]) continue;
+    snakes[head] = tail;
+    used[head] = true; used[tail] = true;
+  }
+  return snakes;
+}
+
+function startSnakeMovement(){
+  stopSnakeMovement();
+  snakeTimer = setInterval(function(){
+    if(busy || over) return;
+    SNAKES = generateRandomSnakes(Object.keys(CLASSIC_SNAKES).length);
+    renderSnakes();
+    say(document.getElementById('msg').innerHTML + ' <b style="color:var(--rose)">🐍 The snakes moved!</b>');
+  }, 10000);
+}
+
+function stopSnakeMovement(){
+  if(snakeTimer){ clearInterval(snakeTimer); snakeTimer = null; }
+}
+
+function setBoardMode(dynamic){
+  dynamicBoard = dynamic;
+  document.getElementById('bm-classic').classList.toggle('on', !dynamic);
+  document.getElementById('bm-dynamic').classList.toggle('on', dynamic);
+  if(dynamic){
+    SNAKES = generateRandomSnakes(Object.keys(CLASSIC_SNAKES).length);
+    startSnakeMovement();
+  } else {
+    stopSnakeMovement();
+    SNAKES = CLASSIC_SNAKES;
+  }
+  renderLadders();
+  newGame();
+}
+
+buildGrid();
+renderLadders();
 
 function place(i, animSlide){
   var el = document.getElementById('t' + i);
