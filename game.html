@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>مارپله — Snakes &amp; Ladders | Amin Abbasishahkoo</title>
-<meta name="description" content="A playable snakes and ladders game with dice. Play against the computer or a friend.">
+<meta name="description" content="Two playable browser games: snakes and ladders with dice, and a Wordle clone with a fresh random word each round and a saved scoreboard.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Vazirmatn:wght@400;600;700&display=swap" rel="stylesheet">
@@ -348,6 +348,45 @@ document.addEventListener('DOMContentLoaded', function () {
 .win h3{font-family:var(--display);font-weight:800;font-size:30px;letter-spacing:-.03em}
 .rules{font-size:14.5px;color:var(--muted)}
 .rules li{margin-bottom:6px}
+
+/* ============ wordle ============ */
+.gtabs{display:flex;gap:8px;max-width:420px;margin:0 auto}
+.wboardwrap{position:relative;max-width:340px;margin:0 auto 22px}
+.wboard{display:grid;grid-template-rows:repeat(6,1fr);gap:6px}
+.wrow{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.wtile{aspect-ratio:1;border:2px solid var(--line-2);border-radius:8px;
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--display);font-weight:700;font-size:22px;text-transform:uppercase;
+  background:var(--surface);color:var(--text);transition:transform .15s,border-color .15s}
+.wtile.filled{border-color:var(--faint)}
+.wtile.correct{background:var(--mint);border-color:var(--mint);color:#fff}
+.wtile.present{background:var(--amber);border-color:var(--amber);color:#fff}
+.wtile.absent{background:var(--faint);border-color:var(--faint);color:#fff}
+.wtile.shake{animation:wshake .4s}
+.wtile.pop{animation:wpop .12s}
+@keyframes wshake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+@keyframes wpop{0%{transform:scale(1)}50%{transform:scale(1.08)}100%{transform:scale(1)}}
+.wname-bar{display:flex;gap:10px;margin-bottom:20px;max-width:340px;margin-left:auto;margin-right:auto}
+.winput{flex:1;min-width:0;padding:10px 16px;border-radius:99px;border:1px solid var(--line);
+  background:var(--surface);color:var(--text);font-family:var(--body);font-size:14px}
+.winput:focus-visible{outline:2px solid var(--iris);outline-offset:2px}
+.wkeyboard{display:flex;flex-direction:column;gap:6px;align-items:center;margin-top:22px}
+.wkrow{display:flex;gap:5px}
+.wkey{min-width:30px;height:42px;padding:0 6px;border-radius:6px;border:none;
+  background:var(--bg-2);color:var(--text);font-weight:600;font-size:12px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;font-family:var(--body);transition:all .15s}
+.wkey:hover{filter:brightness(.95)}
+.wkey.wide{min-width:48px;font-size:10.5px}
+.wkey.correct{background:var(--mint);color:#fff}
+.wkey.present{background:var(--amber);color:#fff}
+.wkey.absent{background:var(--faint);color:#fff;opacity:.55}
+.wscore-row{display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid var(--line);font-size:14px}
+.wscore-row:last-child{border-bottom:none}
+.wscore-row .wname{font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wscore-row .wbest{font-family:var(--mono);color:var(--iris);font-size:13px}
+.wscore-row .wlast{font-family:var(--mono);color:var(--faint);font-size:12px;white-space:nowrap}
+.wempty{color:var(--faint);font-size:14px}
+[hidden]{display:none !important}
 </style>
 </head>
 <body>
@@ -370,7 +409,14 @@ document.addEventListener('DOMContentLoaded', function () {
   </div>
 </nav>
 
-<header class="phead">
+<div class="wrap" style="padding-top:26px">
+  <div class="gtabs rv">
+    <button class="opt on" id="gtab-snl" onclick="switchGame('snl')" style="flex:1">Snakes &amp; Ladders</button>
+    <button class="opt" id="gtab-wordle" onclick="switchGame('wordle')" style="flex:1">Wordle</button>
+  </div>
+</div>
+
+<header class="phead" id="head-snl">
   <div class="aurora" aria-hidden="true"><div class="blob b2"></div><div class="blob b3"></div></div>
   <div class="wrap" style="position:relative;z-index:1">
     <span class="eyebrow rv">Play</span>
@@ -379,9 +425,18 @@ document.addEventListener('DOMContentLoaded', function () {
   </div>
 </header>
 
+<header class="phead" id="head-wordle" hidden>
+  <div class="aurora" aria-hidden="true"><div class="blob b2"></div><div class="blob b3"></div></div>
+  <div class="wrap" style="position:relative;z-index:1">
+    <span class="eyebrow rv">Play</span>
+    <h1 class="rv">Word<span class="grad">le</span></h1>
+    <p class="rv">Guess the 5-letter word in 6 tries. A fresh word is pulled from a random-word API every game. Enter your name to save your score.</p>
+  </div>
+</header>
+
 <section style="padding-top:26px">
   <div class="wrap">
-    <div class="game">
+    <div class="game" id="game-snl">
       <div class="rv">
         <div class="boardwrap">
           <div class="grid" id="grid"></div>
@@ -433,6 +488,45 @@ document.addEventListener('DOMContentLoaded', function () {
             <li>Land on a ladder foot, climb it.</li>
             <li>Land on a snake head, slide down.</li>
             <li>You need an exact roll to land on 100. Overshoot and you stay put.</li>
+          </ul>
+        </div>
+      </aside>
+    </div>
+
+    <div class="game" id="game-wordle" hidden>
+      <div class="rv">
+        <div class="wname-bar" id="wNameBar">
+          <input type="text" id="wPlayerName" class="winput" placeholder="Enter your name to play" maxlength="24">
+          <button class="btn pri" id="wStartBtn" onclick="startWordle()">Start</button>
+        </div>
+
+        <div class="wboardwrap">
+          <div class="wboard" id="wBoard"></div>
+          <div class="win" id="wWin">
+            <h3 id="wWinText"></h3>
+            <p id="wWinScore" style="color:var(--muted)"></p>
+            <button class="btn pri" onclick="startWordle()">Play again</button>
+          </div>
+        </div>
+
+        <p class="msg" id="wMsg">Enter your name and press Start to fetch a word.</p>
+
+        <div class="wkeyboard" id="wKeyboard"></div>
+      </div>
+
+      <aside class="rv">
+        <div class="panel">
+          <h3 style="font-family:var(--display);font-weight:700;font-size:16px;margin-bottom:12px">Scoreboard</h3>
+          <div id="wScores"><p class="wempty">No games played yet.</p></div>
+        </div>
+
+        <div class="panel" style="margin-top:16px">
+          <h3 style="font-family:var(--display);font-weight:700;font-size:16px;margin-bottom:12px">How to play</h3>
+          <ul class="rules" style="margin-left:17px">
+            <li>Green — right letter, right spot.</li>
+            <li>Yellow — right letter, wrong spot.</li>
+            <li>Gray — letter isn't in the word.</li>
+            <li>6 guesses. A new random word every game.</li>
           </ul>
         </div>
       </aside>
@@ -629,6 +723,257 @@ function endTurn(v){
 }
 
 newGame();
+</script>
+
+<script>
+/* ============ game switcher ============ */
+function switchGame(which){
+  var isSnl = which === 'snl';
+  document.getElementById('gtab-snl').classList.toggle('on', isSnl);
+  document.getElementById('gtab-wordle').classList.toggle('on', !isSnl);
+  document.getElementById('head-snl').hidden = !isSnl;
+  document.getElementById('head-wordle').hidden = isSnl;
+  document.getElementById('game-snl').hidden = !isSnl;
+  document.getElementById('game-wordle').hidden = isSnl;
+  document.title = isSnl
+    ? 'مارپله — Snakes & Ladders | Amin Abbasishahkoo'
+    : 'Wordle | Amin Abbasishahkoo';
+}
+
+/* ============ wordle ============ */
+var WORD_LEN = 5, MAX_GUESSES = 6;
+var wWord = '', wRow = 0, wCurrent = '', wOver = false, wPlaying = false;
+var wLetterStatus = {}, wPlayerName = '';
+
+var WORDLE_FALLBACK = ['apple','beach','chair','dance','eagle','flame','grape','house','input','joker',
+  'knife','lemon','mango','noble','ocean','piano','quilt','river','stone','table','unity','vivid',
+  'water','xenon','yield','zebra','bread','crane','dream','earth','frost','ghost','heart','ivory',
+  'jelly','koala','lucky','mount','north','olive','plant','quiet','ready','solar','trace','urban',
+  'value','world','young'];
+
+function fetchWordleWord(){
+  return fetch('https://random-word-api.herokuapp.com/word?length=5')
+    .then(function(r){ if(!r.ok) throw new Error('bad response'); return r.json(); })
+    .then(function(arr){
+      var w = ((arr && arr[0]) || '').toLowerCase();
+      if(!/^[a-z]{5}$/.test(w)) throw new Error('bad word');
+      return w;
+    })
+    .catch(function(){
+      return WORDLE_FALLBACK[Math.floor(Math.random() * WORDLE_FALLBACK.length)];
+    });
+}
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+  });
+}
+
+function buildWordleBoard(){
+  var html = '';
+  for(var r = 0; r < MAX_GUESSES; r++){
+    html += '<div class="wrow" id="wrow' + r + '">';
+    for(var c = 0; c < WORD_LEN; c++){
+      html += '<div class="wtile" id="wtile' + r + '-' + c + '"></div>';
+    }
+    html += '</div>';
+  }
+  document.getElementById('wBoard').innerHTML = html;
+}
+
+var WKB_ROWS = ['qwertyuiop', 'asdfghjkl', '!zxcvbnm#'];
+function buildWordleKeyboard(){
+  var html = '';
+  WKB_ROWS.forEach(function(row){
+    html += '<div class="wkrow">';
+    row.split('').forEach(function(ch){
+      if(ch === '!') html += '<button class="wkey wide" data-key="enter" onclick="wHandleKey(\'enter\')">Enter</button>';
+      else if(ch === '#') html += '<button class="wkey wide" data-key="back" onclick="wHandleKey(\'back\')">⌫</button>';
+      else html += '<button class="wkey" data-key="' + ch + '" onclick="wHandleKey(\'' + ch + '\')">' + ch + '</button>';
+    });
+    html += '</div>';
+  });
+  document.getElementById('wKeyboard').innerHTML = html;
+}
+
+function wSay(t){ document.getElementById('wMsg').innerHTML = t; }
+
+function startWordle(){
+  var nameInput = document.getElementById('wPlayerName');
+  var name = nameInput.value.trim();
+  if(!name){
+    wSay('Please enter your name first.');
+    nameInput.focus();
+    return;
+  }
+  wPlayerName = name;
+  var startBtn = document.getElementById('wStartBtn');
+  nameInput.disabled = true;
+  startBtn.disabled = true;
+  startBtn.textContent = 'Loading…';
+  document.getElementById('wWin').classList.remove('show');
+  wRow = 0; wCurrent = ''; wOver = false; wPlaying = false; wLetterStatus = {};
+  buildWordleBoard();
+  buildWordleKeyboard();
+  wSay('Fetching a word…');
+
+  fetchWordleWord().then(function(word){
+    wWord = word;
+    wPlaying = true;
+    startBtn.disabled = false;
+    startBtn.textContent = 'Restart';
+    nameInput.disabled = false;
+    wSay('Good luck, <b>' + escapeHtml(wPlayerName) + '</b>. Type your first guess.');
+  });
+}
+
+function wHandleKey(key){
+  if(!wPlaying || wOver) return;
+  if(key === 'enter') return wSubmitGuess();
+  if(key === 'back'){
+    wCurrent = wCurrent.slice(0, -1);
+    return wRenderCurrent();
+  }
+  if(/^[a-z]$/.test(key) && wCurrent.length < WORD_LEN){
+    wCurrent += key;
+    wRenderCurrent();
+  }
+}
+
+function wRenderCurrent(){
+  for(var c = 0; c < WORD_LEN; c++){
+    var tile = document.getElementById('wtile' + wRow + '-' + c);
+    var ch = wCurrent[c] || '';
+    tile.textContent = ch;
+    tile.classList.toggle('filled', !!ch);
+  }
+}
+
+function wSubmitGuess(){
+  if(wCurrent.length < WORD_LEN){
+    var row = document.getElementById('wrow' + wRow);
+    row.classList.remove('shake'); void row.offsetWidth; row.classList.add('shake');
+    wSay('Not enough letters.');
+    return;
+  }
+
+  var guess = wCurrent, target = wWord.split(''), statuses = new Array(WORD_LEN).fill('absent');
+  var used = new Array(WORD_LEN).fill(false);
+
+  for(var i = 0; i < WORD_LEN; i++){
+    if(guess[i] === target[i]){ statuses[i] = 'correct'; used[i] = true; }
+  }
+  for(var i = 0; i < WORD_LEN; i++){
+    if(statuses[i] === 'correct') continue;
+    for(var j = 0; j < WORD_LEN; j++){
+      if(!used[j] && guess[i] === target[j]){ statuses[i] = 'present'; used[j] = true; break; }
+    }
+  }
+
+  var rank = {absent: 0, present: 1, correct: 2};
+  statuses.forEach(function(status, i){
+    setTimeout(function(){
+      var tile = document.getElementById('wtile' + wRow + '-' + i);
+      tile.classList.add('pop', status);
+      var prev = wLetterStatus[guess[i]];
+      if(!prev || rank[status] > rank[prev]) wLetterStatus[guess[i]] = status;
+      var key = document.querySelector('.wkey[data-key="' + guess[i] + '"]');
+      if(key){
+        key.classList.remove('correct', 'present', 'absent');
+        key.classList.add(wLetterStatus[guess[i]]);
+      }
+    }, i * 220);
+  });
+
+  var won = guess === wWord;
+  var thisRow = wRow;
+  setTimeout(function(){
+    if(won){
+      wEndGame(true, thisRow);
+    } else if(thisRow + 1 >= MAX_GUESSES){
+      wEndGame(false, thisRow);
+    } else {
+      wRow++;
+      wCurrent = '';
+      wSay('Row ' + (wRow + 1) + ' of ' + MAX_GUESSES + '.');
+    }
+  }, WORD_LEN * 220 + 150);
+}
+
+function wEndGame(won, lastRow){
+  wOver = true; wPlaying = false;
+  var guessesUsed = lastRow + 1;
+  var score = won ? (MAX_GUESSES - lastRow) * 15 : 0;
+
+  document.getElementById('wWinText').textContent = won ? 'You got it!' : 'So close — it was "' + wWord.toUpperCase() + '"';
+  document.getElementById('wWinScore').textContent = won
+    ? 'Solved in ' + guessesUsed + ' / ' + MAX_GUESSES + ' — score ' + score
+    : 'Score 0';
+  document.getElementById('wWin').classList.add('show');
+  wSay(won ? '<b>' + escapeHtml(wPlayerName) + '</b> solved it in ' + guessesUsed + '.' : 'Out of guesses.');
+
+  wSaveScore(wPlayerName, score, won, guessesUsed);
+}
+
+function wLoadScores(){
+  try { return JSON.parse(localStorage.getItem('wordleScores') || '{}'); } catch(e){ return {}; }
+}
+
+function wSaveScore(name, score, won, guesses){
+  var all = wLoadScores();
+  var prev = all[name];
+  all[name] = {
+    name: name,
+    best: prev ? Math.max(prev.best, score) : score,
+    lastScore: score,
+    lastWon: won,
+    lastGuesses: guesses,
+    gamesPlayed: prev ? prev.gamesPlayed + 1 : 1,
+    playedAt: new Date().toISOString()
+  };
+  try { localStorage.setItem('wordleScores', JSON.stringify(all)); } catch(e){}
+  wRenderScores();
+}
+
+function wRenderScores(){
+  var all = wLoadScores();
+  var list = Object.keys(all).map(function(k){ return all[k]; });
+  var box = document.getElementById('wScores');
+  if(!list.length){
+    box.innerHTML = '<p class="wempty">No games played yet.</p>';
+    return;
+  }
+  list.sort(function(a, b){ return b.best - a.best; });
+  box.innerHTML = list.map(function(p){
+    var when = new Date(p.playedAt);
+    var d = when.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    return '<div class="wscore-row">' +
+      '<span class="wname">' + escapeHtml(p.name) + '</span>' +
+      '<span class="wbest">best ' + p.best + '</span>' +
+      '<span class="wlast">' + (p.lastWon ? p.lastGuesses + '/6' : 'lost') + ' · ' + d + '</span>' +
+    '</div>';
+  }).join('');
+}
+
+document.addEventListener('keydown', function(e){
+  var panel = document.getElementById('game-wordle');
+  if(!panel || panel.hidden) return;
+  if(document.activeElement === document.getElementById('wPlayerName')) return;
+  if(!wPlaying || wOver) return;
+  var k = e.key.toLowerCase();
+  if(k === 'enter') return wHandleKey('enter');
+  if(k === 'backspace') return wHandleKey('back');
+  if(/^[a-z]$/.test(k)) return wHandleKey(k);
+});
+
+document.getElementById('wPlayerName').addEventListener('keydown', function(e){
+  if(e.key === 'Enter') startWordle();
+});
+
+buildWordleBoard();
+buildWordleKeyboard();
+wRenderScores();
 </script>
 </body>
 </html>
