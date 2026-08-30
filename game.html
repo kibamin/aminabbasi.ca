@@ -406,7 +406,9 @@ document.addEventListener('DOMContentLoaded', function () {
 .rules li{margin-bottom:6px}
 
 /* ============ wordle ============ */
-.gtabs{display:flex;gap:8px;max-width:420px;margin:0 auto}
+.gtabs{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;max-width:760px;margin:0 auto}
+.gtabs .opt{white-space:nowrap;padding:8px 14px}
+@media(max-width:640px){.gtabs .opt{font-size:12px;padding:7px 10px}}
 .wboardwrap{position:relative;max-width:340px;margin:0 auto 22px}
 .wboard{display:grid;grid-template-rows:repeat(6,1fr);gap:6px}
 .wrow{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
@@ -497,6 +499,18 @@ document.addEventListener('DOMContentLoaded', function () {
 .fb-select{margin-left:auto;font-family:var(--mono);font-size:13px;padding:6px 10px;border-radius:9px;
   border:1px solid var(--line);background:var(--surface);color:var(--text);cursor:pointer}
 .fb-select:focus-visible{outline:2px solid var(--iris);outline-offset:2px}
+
+/* ============ passe-trappe ============ */
+.pt-score{display:flex;align-items:center;justify-content:center;gap:22px;margin-bottom:14px}
+.pt-side{display:flex;flex-direction:column;align-items:center;line-height:1}
+.pt-side span{font-family:var(--display);font-weight:800;font-size:32px;letter-spacing:-.03em}
+.pt-side i{font-style:normal;font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--faint);margin-top:6px}
+.pt-vs{font-family:var(--mono);font-size:12px;color:var(--faint)}
+.pt-wrap{position:relative;max-width:720px;margin:0 auto}
+#ptCanvas{width:100%;height:auto;display:block;border-radius:var(--r);
+  box-shadow:var(--shadow);touch-action:none;cursor:grab}
+#ptCanvas.dragging{cursor:grabbing}
 [hidden]{display:none !important}
 </style>
 </head>
@@ -526,6 +540,7 @@ document.addEventListener('DOMContentLoaded', function () {
     <button class="opt" id="gtab-wordle" onclick="switchGame('wordle')" style="flex:1">Wordle</button>
     <button class="opt" id="gtab-guess" onclick="switchGame('guess')" style="flex:1">Guess the Model</button>
     <button class="opt" id="gtab-football" onclick="switchGame('football')" style="flex:1">⚽ Football</button>
+    <button class="opt" id="gtab-trappe" onclick="switchGame('trappe')" style="flex:1">🥏 Passe-Trappe</button>
   </div>
 </div>
 
@@ -562,6 +577,15 @@ document.addEventListener('DOMContentLoaded', function () {
     <span class="eyebrow rv">Play</span>
     <h1 class="rv">Board <span class="grad">Football</span></h1>
     <p class="rv">Six a side on a green board. Drag a player back like a slingshot, aim with the arrow, release to strike. The ball ricochets off players and walls — there's no out. First to 5 goals wins.</p>
+  </div>
+</header>
+
+<header class="phead" id="head-trappe" hidden>
+  <div class="aurora" aria-hidden="true"><div class="blob b2"></div><div class="blob b3"></div></div>
+  <div class="wrap" style="position:relative;z-index:1">
+    <span class="eyebrow rv">Play</span>
+    <h1 class="rv">Passe-<span class="grad">Trappe</span></h1>
+    <p class="rv">The French wooden classic, also sold as Pucket. A wall splits the board with one gap barely wider than a puck. Load a puck into your elastic, pull back, and fire it through. No turns — the computer is shooting them straight back at you. First to clear their side wins.</p>
   </div>
 </header>
 
@@ -802,6 +826,51 @@ document.addEventListener('DOMContentLoaded', function () {
       </aside>
     </div>
 
+    <div class="game" id="game-trappe" hidden>
+      <div class="rv">
+        <div class="pt-score">
+          <span class="pt-side"><span id="ptCount0">10</span><i>your side</i></span>
+          <span class="pt-vs">vs</span>
+          <span class="pt-side"><span id="ptCount1">10</span><i>computer</i></span>
+        </div>
+
+        <div class="pt-wrap">
+          <canvas id="ptCanvas"></canvas>
+          <div class="win" id="ptWin">
+            <h3 id="ptWinText"></h3>
+            <p id="ptWinSub" style="color:var(--muted)"></p>
+            <button class="btn pri" onclick="ptNewMatch()">Play again</button>
+          </div>
+        </div>
+
+        <p class="msg" id="ptMsg">Drag a puck into the elastic, pull back, and let go.</p>
+      </div>
+
+      <aside class="rv">
+        <div class="panel">
+          <div class="opts">
+            <button class="opt" id="ptD0" onclick="ptSetLevel(0)">Easy</button>
+            <button class="opt on" id="ptD1" onclick="ptSetLevel(1)">Medium</button>
+            <button class="opt" id="ptD2" onclick="ptSetLevel(2)">Hard</button>
+            <button class="tt" id="ptSoundToggle" onclick="toggleSound()" aria-label="Toggle sound effects">🔊</button>
+          </div>
+          <p id="ptLevelNote" style="font-size:13px;color:var(--muted);margin-top:10px"></p>
+          <button class="btn" onclick="ptNewMatch()" style="width:100%;justify-content:center;margin-top:14px">New match</button>
+        </div>
+
+        <div class="panel" style="margin-top:16px">
+          <h3 style="font-family:var(--display);font-weight:700;font-size:16px;margin-bottom:12px">How to play</h3>
+          <ul class="rules" style="margin-left:17px">
+            <li>Press and hold any puck on <b>your side</b> — it loads onto the elastic.</li>
+            <li>Pull back to stretch the band. Further back is more power; move up or down to angle the shot.</li>
+            <li>Release to fire it at the gap. Miss and it rattles back off the wall.</li>
+            <li>There are no turns — the computer is firing at the same time, so pucks keep coming back.</li>
+            <li>The pucks aren't owned: whatever is on your side is yours to clear. <b>First side to empty wins.</b></li>
+          </ul>
+        </div>
+      </aside>
+    </div>
+
     <footer>
       <div class="fin">
         <span>© <span class="yr"></span> Amin Abbasishahkoo</span>
@@ -939,7 +1008,7 @@ function toggleSound(){
   if(soundOn) sfxStep();
 }
 function updateSoundBtn(){
-  ['soundToggle', 'fbSoundToggle'].forEach(function(id){
+  ['soundToggle', 'fbSoundToggle', 'ptSoundToggle'].forEach(function(id){
     var b = document.getElementById(id);
     if(b) b.textContent = soundOn ? '🔊' : '🔇';
   });
@@ -1494,10 +1563,11 @@ var GAME_TITLES = {
   snl: 'مارپله — Snakes & Ladders | Amin Abbasishahkoo',
   wordle: 'Wordle | Amin Abbasishahkoo',
   guess: 'Guess the Model | Amin Abbasishahkoo',
-  football: 'Board Football | Amin Abbasishahkoo'
+  football: 'Board Football | Amin Abbasishahkoo',
+  trappe: 'Passe-Trappe | Amin Abbasishahkoo'
 };
 function switchGame(which){
-  ['snl', 'wordle', 'guess', 'football'].forEach(function(id){
+  ['snl', 'wordle', 'guess', 'football', 'trappe'].forEach(function(id){
     var active = id === which;
     document.getElementById('gtab-' + id).classList.toggle('on', active);
     document.getElementById('head-' + id).hidden = !active;
@@ -1507,6 +1577,7 @@ function switchGame(which){
   if(which === 'guess' && !gmStarted) gmStart();
   if(which === 'snl') resumeSnakeAnimationIfNeeded();
   if(which === 'football') fbActivate(); else fbDeactivate();
+  if(which === 'trappe') ptActivate(); else ptDeactivate();
 }
 
 /* ============ wordle ============ */
@@ -2476,6 +2547,477 @@ function fbDeactivate(){
   if(fbRaf){ cancelAnimationFrame(fbRaf); fbRaf = null; }
   fbLastT = null;
   fbDrag = null;
+}
+</script>
+
+<script>
+/* ============ passe-trappe (a.k.a. Pucket) ============ */
+/* A wall splits the board with a single gap barely wider than a puck. Each
+   player has an elastic stretched across their end: load a puck into it, pull
+   back, release. Pucks are NOT owned — whatever sits on your side is yours to
+   clear, and the computer is firing them back at you in real time, so there
+   are no turns. First side to empty wins. */
+var PT = {
+  W: 940, H: 420, PAD: 14,
+  R: 13,                      // puck radius
+  WALL_T: 7,                  // half-thickness of the centre wall
+  GAP: 40,                    // gap height — a puck is 26 across, so barely more
+  BAND_L: 120, MAXPULL: 100, MAX_SHOT: 1500,
+  DAMP: 1.5, STOP: 10,
+  WALL_REST: 0.55, OUT_REST: 0.60, PUCK_REST: 0.88,
+  START_EACH: 10
+};
+PT.LOGW = PT.W + 2 * PT.PAD; PT.LOGH = PT.H + 2 * PT.PAD;
+PT.WX = PT.W / 2;
+PT.BAND_R = PT.W - PT.BAND_L;
+PT.GY0 = (PT.H - PT.GAP) / 2; PT.GY1 = PT.GY0 + PT.GAP;
+
+var PT_LEVELS = [
+  { name: 'Easy',   reload: [1500, 2500], aimErr: 0.20, power: [0.55, 0.85], note: 'Slow to reload and sprays a lot of shots wide.' },
+  { name: 'Medium', reload: [950, 1650],  aimErr: 0.10, power: [0.70, 0.95], note: 'Reloads steadily and finds the gap fairly often.' },
+  { name: 'Hard',   reload: [520, 950],   aimErr: 0.045, power: [0.85, 1.0], note: 'Fast hands and rarely misses the gap. Good luck.' }
+];
+
+var ptCanvas = null, ptCtx = null, ptDpr = 1, ptRaf = null, ptLastT = null;
+var ptPucks = [], ptActiveTab = false, ptStarted = false, ptGrain = [];
+var ptState = 'live', ptLevel = 1, ptDrag = null, ptAiTimer = null;
+var ptCounts = [PT.START_EACH, PT.START_EACH], ptLastSfx = 0, ptAiFlash = 0;
+
+/* ---- sounds ---- */
+function sfxPtTwang(power){
+  playSound(function(){
+    tone(300 + 120 * power, 0, 0.16, { type: 'triangle', gain: 0.10 + 0.12 * power, sweepTo: 120 });
+    noiseBurst(0, 0.05, { freq: 1400, gain: 0.06 + 0.06 * power });
+  });
+}
+function ptWoodSfx(speed){
+  var now = performance.now();
+  if(speed < 60 || now - ptLastSfx < 38) return;
+  ptLastSfx = now;
+  var g = Math.min(0.17, 0.02 + speed / 3000);
+  playSound(function(){
+    tone(300, 0, 0.07, { type: 'sine', gain: g });
+    noiseBurst(0, 0.05, { freq: 700, gain: g * 0.5, filterType: 'lowpass' });
+  });
+}
+function ptClackSfx(speed){
+  var now = performance.now();
+  if(speed < 60 || now - ptLastSfx < 38) return;
+  ptLastSfx = now;
+  var g = Math.min(0.16, 0.02 + speed / 3200);
+  playSound(function(){
+    tone(620, 0, 0.05, { type: 'triangle', gain: g });
+    noiseBurst(0, 0.035, { freq: 2600, gain: g * 0.55 });
+  });
+}
+function sfxPtThrough(toPlayer){
+  playSound(function(){
+    noiseBurst(0, 0.16, { freq: 700, sweepTo: 2600, gain: 0.09 });
+    tone(toPlayer ? 520 : 880, 0.02, 0.12, { type: 'sine', gain: 0.11 });
+  });
+}
+function sfxPtWin(win){
+  playSound(function(){
+    var n = win ? [523.25, 659.25, 783.99, 1046.5] : [587.33, 493.88, 415.3, 329.63];
+    n.forEach(function(f, i){ tone(f, i * 0.13, 0.36, { type: 'triangle', gain: 0.2 }); });
+  });
+}
+
+/* ---- setup ---- */
+function ptResetPucks(){
+  ptPucks = [];
+  var cols = 5, rows = 2;
+  for(var s = 0; s < 2; s++){
+    for(var r = 0; r < rows; r++){
+      for(var c = 0; c < cols; c++){
+        var x = 178 + c * 58 + (Math.random() - 0.5) * 7;
+        var y = PT.H * (r === 0 ? 0.29 : 0.71) + (Math.random() - 0.5) * 10;
+        ptPucks.push({ x: s === 0 ? x : PT.W - x, y: y, vx: 0, vy: 0, r: PT.R, held: false, side: s });
+      }
+    }
+  }
+  ptDrag = null;
+  ptRecount();
+}
+
+function ptRecount(){
+  var a = 0;
+  ptPucks.forEach(function(p){ if(p.x < PT.WX) a++; });
+  ptCounts = [a, ptPucks.length - a];
+  var e0 = document.getElementById('ptCount0'), e1 = document.getElementById('ptCount1');
+  if(e0) e0.textContent = ptCounts[0];
+  if(e1) e1.textContent = ptCounts[1];
+}
+
+function ptSay(t){ var e = document.getElementById('ptMsg'); if(e) e.innerHTML = t; }
+
+function ptSetLevel(i){
+  ptLevel = i;
+  [0, 1, 2].forEach(function(k){ document.getElementById('ptD' + k).classList.toggle('on', k === i); });
+  document.getElementById('ptLevelNote').textContent = PT_LEVELS[i].note;
+  ptNewMatch();
+}
+
+function ptNewMatch(){
+  clearTimeout(ptAiTimer);
+  ptState = 'live';
+  document.getElementById('ptWin').classList.remove('show');
+  ptResetPucks();
+  ptSay('Go! Load a puck into the elastic and fire it through the gap.');
+  if(ptActiveTab) ptScheduleAi(900);
+}
+
+/* ---- physics ---- */
+function ptCircleRect(p, rx0, ry0, rx1, ry1, rest){
+  var cx = Math.max(rx0, Math.min(p.x, rx1));
+  var cy = Math.max(ry0, Math.min(p.y, ry1));
+  var dx = p.x - cx, dy = p.y - cy, d2 = dx * dx + dy * dy;
+  if(d2 >= p.r * p.r) return null;
+  var d = Math.sqrt(d2), nx, ny;
+  if(d > 0.0001){ nx = dx / d; ny = dy / d; }
+  else {
+    /* centre buried inside the bar — eject along the shallowest face */
+    var l = p.x - rx0, rr = rx1 - p.x, t = p.y - ry0, b = ry1 - p.y;
+    var m = Math.min(l, rr, t, b);
+    nx = m === l ? -1 : m === rr ? 1 : 0;
+    ny = m === t ? -1 : m === b ? 1 : 0;
+    if(m !== l && m !== rr && m !== t && m !== b){ nx = 0; ny = -1; }
+    d = 0;
+  }
+  p.x += nx * (p.r - d); p.y += ny * (p.r - d);
+  var vn = p.vx * nx + p.vy * ny;
+  if(vn < 0){
+    var sp = Math.hypot(p.vx, p.vy);
+    p.vx -= (1 + rest) * vn * nx;
+    p.vy -= (1 + rest) * vn * ny;
+    return sp;
+  }
+  return 0;
+}
+
+function ptPairCollide(a, b){
+  var dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy), min = a.r + b.r;
+  if(d === 0 || d >= min) return;
+  var nx = dx / d, ny = dy / d, overlap = min - d;
+  var ima = a.held ? 0 : 1, imb = b.held ? 0 : 1, tot = ima + imb;
+  if(tot === 0) return;
+  a.x -= nx * overlap * (ima / tot); a.y -= ny * overlap * (ima / tot);
+  b.x += nx * overlap * (imb / tot); b.y += ny * overlap * (imb / tot);
+  var vn = (b.vx - a.vx) * nx + (b.vy - a.vy) * ny;
+  if(vn > 0) return;
+  var jm = -(1 + PT.PUCK_REST) * vn / tot;
+  a.vx -= jm * nx * ima; a.vy -= jm * ny * ima;
+  b.vx += jm * nx * imb; b.vy += jm * ny * imb;
+  ptClackSfx(Math.abs(vn));
+}
+
+function ptStep(dt){
+  var i, j, p, crossed = null;
+
+  for(i = 0; i < ptPucks.length; i++){
+    p = ptPucks[i];
+    if(p.held) continue;
+    var wasLeft = p.x < PT.WX;
+    p.x += p.vx * dt; p.y += p.vy * dt;
+    var f = Math.exp(-PT.DAMP * dt);
+    p.vx *= f; p.vy *= f;
+    if(Math.hypot(p.vx, p.vy) < PT.STOP){ p.vx = 0; p.vy = 0; }
+
+    /* outer walls */
+    var sp = Math.hypot(p.vx, p.vy);
+    if(p.x < p.r){ p.x = p.r; p.vx = -p.vx * PT.OUT_REST; ptWoodSfx(sp); }
+    if(p.x > PT.W - p.r){ p.x = PT.W - p.r; p.vx = -p.vx * PT.OUT_REST; ptWoodSfx(sp); }
+    if(p.y < p.r){ p.y = p.r; p.vy = -p.vy * PT.OUT_REST; ptWoodSfx(sp); }
+    if(p.y > PT.H - p.r){ p.y = PT.H - p.r; p.vy = -p.vy * PT.OUT_REST; ptWoodSfx(sp); }
+
+    /* the two bars of the centre wall — circle/rect handles the gap lips too */
+    var hit = ptCircleRect(p, PT.WX - PT.WALL_T, 0, PT.WX + PT.WALL_T, PT.GY0, PT.WALL_REST);
+    if(hit === null) hit = ptCircleRect(p, PT.WX - PT.WALL_T, PT.GY1, PT.WX + PT.WALL_T, PT.H, PT.WALL_REST);
+    if(hit) ptWoodSfx(hit);
+
+    if((p.x < PT.WX) !== wasLeft) crossed = wasLeft;   // wasLeft=true → it went to the computer
+  }
+
+  for(i = 0; i < ptPucks.length; i++)
+    for(j = i + 1; j < ptPucks.length; j++) ptPairCollide(ptPucks[i], ptPucks[j]);
+
+  if(crossed !== null){
+    sfxPtThrough(!crossed);
+    ptRecount();
+  }
+}
+
+/* ---- computer ---- */
+function ptScheduleAi(delay){
+  clearTimeout(ptAiTimer);
+  var L = PT_LEVELS[ptLevel];
+  var d = delay != null ? delay : L.reload[0] + Math.random() * (L.reload[1] - L.reload[0]);
+  ptAiTimer = setTimeout(ptAiShoot, d);
+}
+
+function ptAiShoot(){
+  if(!ptActiveTab || ptState !== 'live') return;
+  var L = PT_LEVELS[ptLevel];
+  var mine = ptPucks.filter(function(p){ return p.x >= PT.WX && !p.held; });
+  if(!mine.length){ ptScheduleAi(); return; }
+
+  var puck = mine[Math.floor(Math.random() * mine.length)];
+  /* aim at a point inside the gap, then pick a nock spot on the band that lines up */
+  var target = { x: PT.WX, y: PT.H / 2 + (Math.random() - 0.5) * PT.GAP * 0.55 };
+  var nockY = Math.max(30, Math.min(PT.H - 30, target.y + (Math.random() - 0.5) * 150));
+  var ang = Math.atan2(target.y - nockY, target.x - PT.BAND_R) + (Math.random() - 0.5) * 2 * L.aimErr;
+  var power = L.power[0] + Math.random() * (L.power[1] - L.power[0]);
+
+  puck.x = PT.BAND_R; puck.y = nockY;
+  puck.vx = Math.cos(ang) * power * PT.MAX_SHOT;
+  puck.vy = Math.sin(ang) * power * PT.MAX_SHOT;
+  ptAiFlash = performance.now();
+  sfxPtTwang(power);
+  ptRecount();
+  ptScheduleAi();
+}
+
+/* ---- win ---- */
+function ptCheckWin(){
+  if(ptState !== 'live') return;
+  if(ptCounts[0] !== 0 && ptCounts[1] !== 0) return;
+  var youWin = ptCounts[0] === 0;
+  ptState = 'over';
+  clearTimeout(ptAiTimer);
+  ptDrag = null;
+  sfxPtWin(youWin);
+  document.getElementById('ptWinText').textContent = youWin ? 'Your side is clear!' : 'The computer cleared first';
+  document.getElementById('ptWinSub').textContent = youWin
+    ? 'Beat ' + PT_LEVELS[ptLevel].name + ' with ' + ptCounts[1] + ' left on their side.'
+    : 'You still had ' + ptCounts[0] + ' to clear on ' + PT_LEVELS[ptLevel].name + '.';
+  document.getElementById('ptWin').classList.add('show');
+  ptSay(youWin ? 'You cleared your side first — nice shooting.' : 'The computer emptied its side first.');
+}
+
+/* ---- drawing ---- */
+function ptDrawBoard(g){
+  var grd = g.createLinearGradient(0, 0, 0, PT.H);
+  grd.addColorStop(0, '#DCAE6E'); grd.addColorStop(0.5, '#CE9B57'); grd.addColorStop(1, '#C08B49');
+  g.fillStyle = grd;
+  g.fillRect(0, 0, PT.W, PT.H);
+
+  g.lineWidth = 1;
+  ptGrain.forEach(function(ln){
+    g.strokeStyle = 'rgba(120,74,32,' + ln.a + ')';
+    g.beginPath();
+    g.moveTo(0, ln.y);
+    g.bezierCurveTo(PT.W * 0.3, ln.y + ln.w, PT.W * 0.7, ln.y - ln.w, PT.W, ln.y + ln.w * 0.4);
+    g.stroke();
+  });
+
+  /* halves + labels */
+  g.fillStyle = 'rgba(255,255,255,.05)';
+  g.fillRect(0, 0, PT.WX, PT.H);
+  g.font = '700 11px "JetBrains Mono", monospace';
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillStyle = 'rgba(90,55,22,.42)';
+  g.save(); g.translate(PT.WX * 0.5, PT.H - 16); g.fillText('YOUR SIDE', 0, 0); g.restore();
+  g.save(); g.translate(PT.WX * 1.5, PT.H - 16); g.fillText('COMPUTER', 0, 0); g.restore();
+
+  g.strokeStyle = 'rgba(92,56,22,.35)'; g.lineWidth = 2;
+  g.strokeRect(1, 1, PT.W - 2, PT.H - 2);
+}
+
+function ptDrawWall(g){
+  [[0, PT.GY0], [PT.GY1, PT.H]].forEach(function(seg){
+    var y0 = seg[0], y1 = seg[1];
+    var grd = g.createLinearGradient(PT.WX - PT.WALL_T, 0, PT.WX + PT.WALL_T, 0);
+    grd.addColorStop(0, '#4A2E16'); grd.addColorStop(0.45, '#6B4423'); grd.addColorStop(1, '#3E2611');
+    g.fillStyle = grd;
+    g.fillRect(PT.WX - PT.WALL_T, y0, PT.WALL_T * 2, y1 - y0);
+    g.fillStyle = 'rgba(255,220,170,.22)';
+    g.fillRect(PT.WX - PT.WALL_T, y0, PT.WALL_T * 2, 1.5);
+  });
+  /* rounded lips either side of the gap */
+  g.fillStyle = '#7A4E28';
+  [PT.GY0, PT.GY1].forEach(function(y){
+    g.beginPath(); g.arc(PT.WX, y, PT.WALL_T, 0, Math.PI * 2); g.fill();
+  });
+}
+
+function ptDrawBand(g, x, deform, flash){
+  g.lineWidth = 3.2;
+  g.strokeStyle = flash > 0 ? 'rgba(255,190,120,' + (0.55 + 0.45 * flash) + ')' : 'rgba(46,30,18,.85)';
+  g.beginPath();
+  if(deform){ g.moveTo(x, 0); g.lineTo(deform.x, deform.y); g.lineTo(x, PT.H); }
+  else { g.moveTo(x, 0); g.lineTo(x, PT.H); }
+  g.stroke();
+  g.fillStyle = '#3A2412';
+  [0, PT.H].forEach(function(y){ g.beginPath(); g.arc(x, y, 5, 0, Math.PI * 2); g.fill(); });
+}
+
+function ptDrawPuck(g, p){
+  g.beginPath(); g.ellipse(p.x, p.y + 3, p.r * 0.95, p.r * 0.5, 0, 0, Math.PI * 2);
+  g.fillStyle = 'rgba(60,30,5,.28)'; g.fill();
+  var grd = g.createRadialGradient(p.x - 4, p.y - 5, 2, p.x, p.y, p.r);
+  grd.addColorStop(0, '#F2705C'); grd.addColorStop(1, '#C7331F');
+  g.beginPath(); g.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+  g.fillStyle = grd; g.fill();
+  g.lineWidth = 1.6; g.strokeStyle = 'rgba(90,20,10,.65)'; g.stroke();
+  g.beginPath(); g.arc(p.x, p.y, p.r * 0.52, 0, Math.PI * 2);
+  g.strokeStyle = 'rgba(255,220,210,.4)'; g.lineWidth = 1.4; g.stroke();
+}
+
+function ptDrawAim(g){
+  if(!ptDrag) return;
+  var p = ptDrag.puck, ax = PT.BAND_L, ay = ptDrag.ay;
+  var dx = ax - p.x, dy = ay - p.y, d = Math.hypot(dx, dy);
+  if(d < 5) return;
+  var power = Math.min(d, PT.MAXPULL) / PT.MAXPULL;
+  var ux = dx / d, uy = dy / d, len = 40 + power * 150;
+  g.save();
+  g.setLineDash([6, 6]); g.lineWidth = 2.4;
+  g.strokeStyle = power > 0.8 ? 'rgba(255,225,110,.95)' : 'rgba(255,255,255,.75)';
+  g.beginPath(); g.moveTo(p.x, p.y); g.lineTo(p.x + ux * len, p.y + uy * len); g.stroke();
+  g.restore();
+  var hx = p.x + ux * len, hy = p.y + uy * len, a = Math.atan2(uy, ux), hs = 8 + power * 6;
+  g.beginPath();
+  g.moveTo(hx + Math.cos(a) * hs, hy + Math.sin(a) * hs);
+  g.lineTo(hx + Math.cos(a + 2.5) * hs, hy + Math.sin(a + 2.5) * hs);
+  g.lineTo(hx + Math.cos(a - 2.5) * hs, hy + Math.sin(a - 2.5) * hs);
+  g.closePath();
+  g.fillStyle = power > 0.8 ? '#FFE16E' : '#fff'; g.fill();
+}
+
+function ptDraw(){
+  var g = ptCtx;
+  g.setTransform(ptDpr, 0, 0, ptDpr, 0, 0);
+  g.fillStyle = '#3B2412';
+  g.fillRect(0, 0, PT.LOGW, PT.LOGH);
+  g.save();
+  g.translate(PT.PAD, PT.PAD);
+  ptDrawBoard(g);
+  ptDrawWall(g);
+  var flash = Math.max(0, 1 - (performance.now() - ptAiFlash) / 260);
+  ptDrawBand(g, PT.BAND_L, ptDrag ? { x: ptDrag.puck.x, y: ptDrag.puck.y } : null, 0);
+  ptDrawBand(g, PT.BAND_R, null, flash);
+  ptPucks.forEach(function(p){ ptDrawPuck(g, p); });
+  ptDrawAim(g);
+  g.restore();
+}
+
+/* ---- loop ---- */
+function ptLoop(now){
+  if(!ptActiveTab){ ptRaf = null; ptLastT = null; return; }
+  if(ptLastT === null) ptLastT = now;
+  var dt = Math.min(0.05, (now - ptLastT) / 1000);
+  ptLastT = now;
+
+  if(ptState === 'live'){
+    /* Size the sub-step off the fastest puck. Resolving the centre wall by
+       closest point flips its normal once a centre crosses the wall's
+       mid-plane, which would eject a fast puck out the FAR side instead of
+       rebounding it. Advancing by less than (wall half-thickness + radius)
+       per sub-step guarantees the first contact lands on the near half, so
+       the rebound is always resolved against the side it came from. */
+    var maxSp = 0;
+    for(var k = 0; k < ptPucks.length; k++){
+      if(ptPucks[k].held) continue;
+      var s = Math.hypot(ptPucks[k].vx, ptPucks[k].vy);
+      if(s > maxSp) maxSp = s;
+    }
+    var maxAdvance = (PT.WALL_T + PT.R) * 0.5;
+    var steps = Math.max(1, Math.min(400, Math.ceil(maxSp * dt / maxAdvance)));
+    for(var i = 0; i < steps; i++) ptStep(dt / steps);
+    ptCheckWin();
+  }
+  ptDraw();
+  ptRaf = requestAnimationFrame(ptLoop);
+}
+
+/* ---- input ---- */
+function ptPoint(e){
+  var r = ptCanvas.getBoundingClientRect();
+  return {
+    x: (e.clientX - r.left) * (PT.LOGW / r.width) - PT.PAD,
+    y: (e.clientY - r.top) * (PT.LOGH / r.height) - PT.PAD
+  };
+}
+
+function ptOnDown(e){
+  if(ptState !== 'live' || ptDrag) return;
+  var pt = ptPoint(e), hit = null, best = Infinity;
+  ptPucks.forEach(function(p){
+    if(p.x >= PT.WX) return;                       // only pucks on your side
+    var d = Math.hypot(pt.x - p.x, pt.y - p.y);
+    if(d < p.r + 10 && d < best){ best = d; hit = p; }
+  });
+  if(!hit) return;
+  e.preventDefault();
+  hit.held = true; hit.vx = 0; hit.vy = 0;
+  ptDrag = { puck: hit, ay: Math.max(24, Math.min(PT.H - 24, pt.y)) };
+  ptApplyDrag(pt);
+  ptCanvas.classList.add('dragging');
+  if(ptCanvas.setPointerCapture) try { ptCanvas.setPointerCapture(e.pointerId); } catch(err){}
+}
+
+function ptApplyDrag(pt){
+  var p = ptDrag.puck, ax = PT.BAND_L, ay = ptDrag.ay;
+  var x = Math.min(pt.x, ax - 3), y = pt.y;
+  var dx = ax - x, dy = ay - y, d = Math.hypot(dx, dy);
+  if(d > PT.MAXPULL){ x = ax - (dx / d) * PT.MAXPULL; y = ay - (dy / d) * PT.MAXPULL; }
+  p.x = Math.max(p.r, Math.min(PT.WX - p.r, x));
+  p.y = Math.max(p.r, Math.min(PT.H - p.r, y));
+}
+
+function ptOnMove(e){
+  if(!ptDrag) return;
+  e.preventDefault();
+  ptApplyDrag(ptPoint(e));
+}
+
+function ptOnUp(e){
+  if(!ptDrag) return;
+  e.preventDefault();
+  var p = ptDrag.puck, ax = PT.BAND_L, ay = ptDrag.ay;
+  var dx = ax - p.x, dy = ay - p.y, d = Math.hypot(dx, dy);
+  p.held = false;
+  ptDrag = null;
+  ptCanvas.classList.remove('dragging');
+  if(d < 10){ ptSay('Pull back further to load the elastic.'); return; }
+  var power = Math.min(d, PT.MAXPULL) / PT.MAXPULL;
+  p.vx = (dx / d) * power * PT.MAX_SHOT;
+  p.vy = (dy / d) * power * PT.MAX_SHOT;
+  sfxPtTwang(power);
+}
+
+/* ---- lifecycle ---- */
+function ptActivate(){
+  if(!ptStarted){
+    ptCanvas = document.getElementById('ptCanvas');
+    ptCtx = ptCanvas.getContext('2d');
+    ptDpr = Math.min(2, window.devicePixelRatio || 1);
+    ptCanvas.width = PT.LOGW * ptDpr;
+    ptCanvas.height = PT.LOGH * ptDpr;
+    ptCanvas.style.aspectRatio = PT.LOGW + ' / ' + PT.LOGH;
+    ptCanvas.addEventListener('pointerdown', ptOnDown);
+    ptCanvas.addEventListener('pointermove', ptOnMove);
+    ptCanvas.addEventListener('pointerup', ptOnUp);
+    ptCanvas.addEventListener('pointercancel', ptOnUp);
+    for(var i = 0; i < 26; i++){
+      ptGrain.push({ y: Math.random() * PT.H, w: 4 + Math.random() * 16, a: 0.04 + Math.random() * 0.07 });
+    }
+    document.getElementById('ptLevelNote').textContent = PT_LEVELS[ptLevel].note;
+    ptResetPucks();
+    ptStarted = true;
+  }
+  ptActiveTab = true;
+  ptLastT = null;
+  if(!ptRaf) ptRaf = requestAnimationFrame(ptLoop);
+  if(ptState === 'live') ptScheduleAi(900);
+}
+
+function ptDeactivate(){
+  ptActiveTab = false;
+  clearTimeout(ptAiTimer);
+  if(ptRaf){ cancelAnimationFrame(ptRaf); ptRaf = null; }
+  ptLastT = null;
+  if(ptDrag){ ptDrag.puck.held = false; ptDrag = null; }
 }
 </script>
 </body>
