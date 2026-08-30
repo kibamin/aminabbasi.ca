@@ -318,6 +318,28 @@ document.addEventListener('DOMContentLoaded', function () {
   75%{opacity:1}
   100%{opacity:0;transform:translate(-50%,-170%) scale(.9)}
 }
+.bombsLayer{position:absolute;inset:0;pointer-events:none;z-index:6}
+.bomb-icon{position:absolute;transform:translate(-50%,-50%);font-size:14px;
+  filter:drop-shadow(0 1px 2px rgba(0,0,0,.45));animation:bombPulse 1.4s ease-in-out infinite}
+@keyframes bombPulse{0%,100%{transform:translate(-50%,-50%) scale(1)}50%{transform:translate(-50%,-50%) scale(1.18)}}
+.boom{position:absolute;transform:translate(-50%,-50%);font-size:11px;pointer-events:none;z-index:23;
+  animation:boomPop .6s ease forwards}
+.boom::before{content:"";position:absolute;left:50%;top:50%;width:14px;height:14px;border-radius:50%;
+  transform:translate(-50%,-50%);background:radial-gradient(circle,rgba(255,160,20,.65),rgba(255,80,0,0) 70%);
+  animation:boomFlash .5s ease forwards;z-index:-1}
+@keyframes boomPop{
+  0%{opacity:0;transform:translate(-50%,-50%) scale(.2)}
+  30%{opacity:1;transform:translate(-50%,-50%) scale(3.2)}
+  100%{opacity:0;transform:translate(-50%,-50%) scale(4.2)}
+}
+@keyframes boomFlash{0%{opacity:1;width:14px;height:14px}100%{opacity:0;width:90px;height:90px}}
+.tok.thrown{animation:tokThrow .85s cubic-bezier(.3,.6,.3,1)}
+@keyframes tokThrow{
+  0%{transform:translate(-50%,-50%) scale(1) rotate(0deg)}
+  30%{transform:translate(-50%,-50%) scale(1.3) translateY(-42%) rotate(140deg)}
+  60%{transform:translate(-50%,-50%) scale(1.1) translateY(-14%) rotate(300deg)}
+  100%{transform:translate(-50%,-50%) scale(1) rotate(360deg)}
+}
 .grid{position:absolute;inset:0;display:grid;grid-template-columns:repeat(10,1fr);grid-template-rows:repeat(10,1fr)}
 .cell{position:relative;display:flex;align-items:flex-start;justify-content:flex-start;
   font-family:var(--mono);font-size:9.5px;color:var(--faint);padding:3px 0 0 4px;
@@ -513,6 +535,7 @@ document.addEventListener('DOMContentLoaded', function () {
         <div class="boardwrap">
           <div class="grid" id="grid"></div>
           <svg class="overlay" id="paths" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"></svg>
+          <div class="bombsLayer" id="bombsLayer"></div>
           <div class="tok" id="t0" style="background:#5B4FE9"></div>
           <div class="tok" id="t1" style="background:#E8558F"></div>
           <div class="win" id="win">
@@ -523,7 +546,8 @@ document.addEventListener('DOMContentLoaded', function () {
         </div>
         <div class="legend">
           <span><span class="swatch" style="background:#0FA98E"></span> Ladder — climb up</span>
-          <span><span class="swatch" style="background:#E8558F"></span> Snake — slide down</span>
+          <span id="legend-snake"><span class="swatch" style="background:#E8558F"></span> Snake — slide down</span>
+          <span id="legend-bomb" hidden>💣 Bomb — blows you back to a random earlier square</span>
         </div>
       </div>
 
@@ -535,9 +559,10 @@ document.addEventListener('DOMContentLoaded', function () {
             <button class="tt" id="soundToggle" onclick="toggleSound()" aria-label="Toggle sound effects">🔊</button>
           </div>
 
-          <div class="opts" style="margin-top:9px">
-            <button class="opt on" id="bm-classic" onclick="setBoardMode(false)">Classic board</button>
-            <button class="opt" id="bm-dynamic" onclick="setBoardMode(true)">🐍 Moving snakes</button>
+          <div class="opts" style="margin-top:9px;flex-wrap:wrap">
+            <button class="opt on" id="bm-classic" onclick="setBoardMode('classic')">Classic board</button>
+            <button class="opt" id="bm-dynamic" onclick="setBoardMode('dynamic')">🐍 Moving snakes</button>
+            <button class="opt" id="bm-bomb" onclick="setBoardMode('bomb')">💣 Bomb mode</button>
           </div>
 
           <div class="snake-count-row" id="snakeCountRow" hidden>
@@ -580,6 +605,7 @@ document.addEventListener('DOMContentLoaded', function () {
             <li>Rare green snakes are friendly — their head boosts you forward instead of biting.</li>
             <li>🦘 Each player gets 3 jumps per game (button next to their name): instantly leave the board surface for 1 second, immune to every snake, then land back in the same square.</li>
             <li>Past 16 snakes, panic mode kicks in: the board glows red and every snake speeds up.</li>
+            <li>💣 <b>Bomb mode</b>: no snakes — instead 8 bombs sit on random squares. Land on one and it blows you back to a random earlier square, then pops up again somewhere new.</li>
           </ul>
         </div>
       </aside>
@@ -689,6 +715,7 @@ var LADDERS = {2:38, 7:14, 8:31, 15:26, 21:42, 28:84, 36:44, 51:67, 71:91, 78:98
 var CLASSIC_SNAKES = {16:6, 46:25, 49:11, 62:19, 64:60, 74:53, 89:68, 92:88, 95:75, 99:80};
 var SNAKES = CLASSIC_SNAKES;
 var dynamicBoard = false, snakeAnimId = null, snakeCount = 10, snakesState = [];
+var bombMode = false, bombCells = [], BOMB_COUNT = 8;
 
 var PIPS = {1:[4],2:[0,8],3:[0,4,8],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
 
@@ -788,6 +815,13 @@ function sfxBoost(){
 }
 function sfxJump(){
   playSound(function(){ tone(320, 0, 0.18, { type: 'square', gain: 0.14, sweepTo: 760 }); });
+}
+function sfxBomb(){
+  playSound(function(){
+    tone(95, 0, 0.4, { type: 'sine', gain: 0.3, sweepTo: 35 });
+    noiseBurst(0, 0.42, { freq: 900, sweepTo: 140, gain: 0.32, filterType: 'lowpass' });
+    noiseBurst(0.02, 0.14, { freq: 2600, gain: 0.14 });
+  });
 }
 function sfxWin(){
   playSound(function(){
@@ -1063,16 +1097,99 @@ function setSnakeCount(n){
   if(dynamicBoard) startSnakeAnimation();
 }
 
-function setBoardMode(dynamic){
-  dynamicBoard = dynamic;
-  document.getElementById('bm-classic').classList.toggle('on', !dynamic);
-  document.getElementById('bm-dynamic').classList.toggle('on', dynamic);
-  document.getElementById('snakeCountRow').hidden = !dynamic;
-  if(dynamic){
+/* ---- bomb mode: static board, no snakes — instead a handful of bombs sit on
+   random cells. Land on one and it throws you back to a random earlier
+   square, then a replacement bomb pops up somewhere else on the board. ---- */
+function randomEmptyCell(exclude){
+  var used = { 1: true, 100: true };
+  Object.keys(LADDERS).forEach(function(k){ used[k] = true; used[LADDERS[k]] = true; });
+  (exclude || []).forEach(function(c){ used[c] = true; });
+  var attempts = 0;
+  while(attempts < 300){
+    attempts++;
+    var c = 2 + Math.floor(Math.random() * 97);
+    if(!used[c]) return c;
+  }
+  return null;
+}
+
+function generateBombs(count){
+  var cells = [];
+  for(var i = 0; i < count; i++){
+    var c = randomEmptyCell(cells);
+    if(c) cells.push(c);
+  }
+  return cells;
+}
+
+function renderBombs(){
+  var layer = document.getElementById('bombsLayer');
+  if(!layer) return;
+  layer.innerHTML = bombCells.map(function(c){
+    var xy = cellXY(c);
+    return '<div class="bomb-icon" style="left:' + xy.x + '%;top:' + xy.y + '%">💣</div>';
+  }).join('');
+}
+
+function spawnBoom(xy){
+  var wrap = document.querySelector('.boardwrap');
+  if(!wrap) return;
+  var el = document.createElement('div');
+  el.className = 'boom';
+  el.style.left = xy.x + '%';
+  el.style.top = xy.y + '%';
+  el.textContent = '💥';
+  wrap.appendChild(el);
+  setTimeout(function(){ el.remove(); }, 700);
+}
+
+function explodeBomb(cell, playerIndex, nm, v){
+  var xy = cellXY(cell);
+  spawnBoom(xy);
+  shakeBoard();
+  sfxBomb();
+
+  var dest = cell > 1 ? (1 + Math.floor(Math.random() * (cell - 1))) : 1;
+  pos[playerIndex] = dest;
+  var el = document.getElementById('t' + playerIndex);
+  place(playerIndex, true);
+  el.classList.remove('thrown'); void el.offsetWidth; el.classList.add('thrown');
+  setTimeout(function(){ el.classList.remove('thrown'); }, 900);
+
+  bombCells = bombCells.filter(function(c){ return c !== cell; });
+  var fresh = randomEmptyCell(bombCells);
+  if(fresh) bombCells.push(fresh);
+  renderBombs();
+
+  say('<b>' + nm + '</b> stepped on a bomb! 💣 Blown back to ' + dest + '.');
+  return setTimeout(function(){ afterMove(playerIndex, v, nm); }, 950);
+}
+
+function setBoardMode(m){
+  dynamicBoard = (m === 'dynamic');
+  bombMode = (m === 'bomb');
+  document.getElementById('bm-classic').classList.toggle('on', m === 'classic');
+  document.getElementById('bm-dynamic').classList.toggle('on', m === 'dynamic');
+  document.getElementById('bm-bomb').classList.toggle('on', m === 'bomb');
+  document.getElementById('snakeCountRow').hidden = !dynamicBoard;
+  document.getElementById('legend-snake').hidden = bombMode;
+  document.getElementById('legend-bomb').hidden = !bombMode;
+
+  if(dynamicBoard){
     startSnakeAnimation();
   } else {
     stopSnakeAnimation();
+  }
+
+  if(bombMode){
+    SNAKES = {};
+    bombCells = generateBombs(BOMB_COUNT);
     renderLadders();
+    renderBombs();
+  } else {
+    bombCells = [];
+    document.getElementById('bombsLayer').innerHTML = '';
+    if(m === 'classic'){ SNAKES = CLASSIC_SNAKES; renderLadders(); }
   }
   newGame();
 }
@@ -1229,6 +1346,10 @@ function afterMove(me, v, nm){
     sfxLadder();
     say('<b>' + nm + '</b> rolled ' + v + ' and climbed a ladder to ' + pos[me] + '.');
     return setTimeout(function(){ afterMove(me, v, nm); }, 900);
+  }
+
+  if(bombMode && !airborne[me] && bombCells.indexOf(at) !== -1){
+    return explodeBomb(at, me, nm, v);
   }
 
   var dynHit = (dynamicBoard && !airborne[me]) ? findSnakeHeadHit(at) : null;
