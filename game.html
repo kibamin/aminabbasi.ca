@@ -862,7 +862,8 @@ document.addEventListener('DOMContentLoaded', function () {
           <h3 style="font-family:var(--display);font-weight:700;font-size:16px;margin-bottom:12px">How to play</h3>
           <ul class="rules" style="margin-left:17px">
             <li>Press and hold any puck on <b>your side</b> — it loads onto the elastic.</li>
-            <li>Pull back to stretch the band. Further back is more power; move up or down to angle the shot.</li>
+            <li>Keep the pointer in front of the band and the puck <b>slides along the whole wire</b>, so you can pick your lane top to bottom.</li>
+            <li>Then pull back behind the band to stretch it. Further back is more power; move up or down to angle the shot.</li>
             <li>Release to fire it at the gap. Miss and it rattles back off the wall.</li>
             <li>There are no turns — the computer is firing at the same time, so pucks keep coming back.</li>
             <li>The pucks aren't owned: whatever is on your side is yours to clear. <b>First side to empty wins.</b></li>
@@ -2950,19 +2951,36 @@ function ptOnDown(e){
   if(!hit) return;
   e.preventDefault();
   hit.held = true; hit.vx = 0; hit.vy = 0;
-  ptDrag = { puck: hit, ay: Math.max(24, Math.min(PT.H - 24, pt.y)) };
+  ptDrag = { puck: hit, ay: Math.max(hit.r, Math.min(PT.H - hit.r, pt.y)), drawn: false };
   ptApplyDrag(pt);
   ptCanvas.classList.add('dragging');
   if(ptCanvas.setPointerCapture) try { ptCanvas.setPointerCapture(e.pointerId); } catch(err){}
 }
 
+/* Two phases, so the whole elastic is reachable. While the pointer is still
+   in front of the band the puck simply slides along the wire, anywhere from
+   top to bottom — that picks your lane. Once you pull back behind the band the
+   nock point stays where you left it and further movement sets power and
+   angle. Cross back in front and you're sliding again. */
 function ptApplyDrag(pt){
-  var p = ptDrag.puck, ax = PT.BAND_L, ay = ptDrag.ay;
-  var x = Math.min(pt.x, ax - 3), y = pt.y;
+  var p = ptDrag.puck, ax = PT.BAND_L;
+  var loY = p.r, hiY = PT.H - p.r;
+
+  if(pt.x >= ax){
+    ptDrag.ay = Math.max(loY, Math.min(hiY, pt.y));
+    ptDrag.drawn = false;
+    p.x = ax;
+    p.y = ptDrag.ay;
+    return;
+  }
+
+  var ay = ptDrag.ay;
+  var x = pt.x, y = pt.y;
   var dx = ax - x, dy = ay - y, d = Math.hypot(dx, dy);
   if(d > PT.MAXPULL){ x = ax - (dx / d) * PT.MAXPULL; y = ay - (dy / d) * PT.MAXPULL; }
-  p.x = Math.max(p.r, Math.min(PT.WX - p.r, x));
-  p.y = Math.max(p.r, Math.min(PT.H - p.r, y));
+  ptDrag.drawn = true;
+  p.x = Math.max(p.r, Math.min(ax, x));
+  p.y = Math.max(loY, Math.min(hiY, y));
 }
 
 function ptOnMove(e){
